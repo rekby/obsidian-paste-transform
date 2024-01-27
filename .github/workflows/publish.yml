@@ -1,0 +1,38 @@
+on:
+    workflow_dispatch:
+        inputs:
+            version-part:
+                description: Part of version number for change
+                required: true
+                type: choice
+                options:
+                    - minor
+                    - patch
+permissions:
+    contents: write
+jobs:
+    release:
+        runs-on: ubuntu-latest
+        steps:
+            - name: checkout
+              uses: actions/checkout@v2
+
+            - name: install nodejs
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '21.6.1'
+
+            - name: up version
+              run: npm version "${{ github.event.inputs.version-part }}"
+
+            - name: build
+              run: npm run build
+
+            - name: push tag to github
+              run: git push origin --tags
+
+            - name: create release
+              uses: softprops/action-gh-release@v1
+              files: |
+                  main.json
+                  manifest.json
