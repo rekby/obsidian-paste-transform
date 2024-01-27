@@ -23,7 +23,12 @@ jobs:
                   node-version: '21.6.1'
 
             - name: up version
-              run: npm version "${{ github.event.inputs.version-part }}"
+              id: bump-version
+              run: |
+                npm version "${{ github.event.inputs.version-part }}"
+                VERSION=$(grep 'version' manifest.json | cut -d '"' -f 4)
+                echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+                
 
             - name: build
               run: npm run build
@@ -33,6 +38,7 @@ jobs:
 
             - name: create release
               uses: softprops/action-gh-release@v1
+              tag_name: ${{ steps.bump-version.outputs.version }}
               files: |
                   main.json
                   manifest.json
