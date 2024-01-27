@@ -5,13 +5,21 @@ import {App, Editor, MarkdownView, Modal, Plugin, PluginSettingTab, Setting, Tex
 interface PasteTransformSettings {
 	patterns: string[],
 	replacers: string[],
-	settingsVersion: number,
+	settingsFormatVersion: number,
 }
 
 const DEFAULT_SETTINGS: PasteTransformSettings = {
-	patterns: [],
-	replacers: [],
-	settingsVersion: 1,
+	patterns: [
+		"^https://github.com/[^/]+/([^/]+)/issues/(\\d+)$",
+		"^https://github.com/[^/]+/([^/]+)/pull/(\\d+)$",
+		"^https://\\w+.wikipedia.org/wiki/([^\\s]+)$",
+	],
+	replacers: [
+		"[⚡ $1#$2]($&)",
+		"[📝 $1#$2]($&)",
+		"[📖 $1]($&)",
+	],
+	settingsFormatVersion: 1,
 }
 
 class ReplaceRule {
