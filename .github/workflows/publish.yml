@@ -41,7 +41,9 @@ jobs:
                 npm run build
 
             - name: push tag to github
-              run: git push origin --tags
+              run: |
+                git push origin
+                git push origin --tags
 
             - name: create release
               uses: softprops/action-gh-release@v1
