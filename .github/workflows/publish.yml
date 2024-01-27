@@ -22,6 +22,11 @@ jobs:
               with:
                   node-version: '21.6.1'
 
+            - name: git config
+              run: |
+                  git config user.email github-robot@github.com
+                  git config user.name github-robot
+
             - name: up version
               id: bump-version
               run: |
