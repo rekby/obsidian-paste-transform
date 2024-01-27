@@ -6,5 +6,6 @@
 	"description": "Handle pasted text and and transform it by regexp rules.",
 	"author": "Rekby",
 	"authorUrl": "https://github.com/rekby/obsidian-paste-transform",
-	"isDesktopOnly": false
+	"isDesktopOnly": false,
+	"license": "Apache-2.0"
 }
