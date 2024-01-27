@@ -1,7 +1,7 @@
 {
 	"id": "paste-transform",
 	"name": "Paste transform",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"minAppVersion": "1.1.8",
 	"description": "Handle pasted text and and transform it by regexp rules.",
 	"author": "Rekby",
