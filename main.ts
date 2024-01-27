@@ -40,7 +40,7 @@ export default class PasteTransform extends Plugin {
 		await this.loadSettings();
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.addSettingTab(new PasteTransformSettingsTab(this.app, this));
 
 		this.registerEvent(this.app.workspace.on("editor-paste", event => this.onPaste(event)));
 	}
@@ -107,7 +107,7 @@ export default class PasteTransform extends Plugin {
 	}
 }
 
-class SampleSettingTab extends PluginSettingTab {
+class PasteTransformSettingsTab extends PluginSettingTab {
 	plugin: PasteTransform;
 
 	constructor(app: App, plugin: PasteTransform) {
