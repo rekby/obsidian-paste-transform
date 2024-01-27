@@ -31,3 +31,6 @@ If you make a mistake in regexp - error will output to "Try destination"
 ## Resize text area
 Text areas can be small by default. You can resize them by drag at right down corner.
 
+# Versioning
+Current version system is 0.X.Y, where X changed when update contains some incompatible changes (see in release notes).
+Y changes for updates without incompatible changes (bug fix, add new features, etc.).
