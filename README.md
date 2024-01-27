@@ -4,6 +4,9 @@ This is a Paste transform plugin for Obsidian (https://obsidian.md).
 
 The plugin handle paste event, check if pasted simple text, then handle pasted textx by regexps.
 
+I use it for short links for issues/prs and expand issues to internal issue tracker.
+For example: ASD-123 -> `[ASD-123](https://internal.tracker/ASD-123)`
+
 # Usage 
 Simple paste text/link from clipboard. For example try to copy and paste link for [example issue](https://github.com/rekby/obsidian-paste-transform/issues/1)
 and paste them to a page.
