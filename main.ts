@@ -1,4 +1,4 @@
-import {App, Editor, MarkdownView, Modal, Plugin, PluginSettingTab, Setting, TextAreaComponent} from 'obsidian';
+import {App, Plugin, PluginSettingTab, Setting, TextAreaComponent} from 'obsidian';
 
 // Remember to rename these classes and interfaces!
 
