@@ -12,11 +12,13 @@ const DEFAULT_SETTINGS: PasteTransformSettings = {
 	patterns: [
 		"^https://github.com/[^/]+/([^/]+)/issues/(\\d+)$",
 		"^https://github.com/[^/]+/([^/]+)/pull/(\\d+)$",
+		"^https://github.com/[^/]+/([^/]+)$",
 		"^https://\\w+.wikipedia.org/wiki/([^\\s]+)$",
 	],
 	replacers: [
-		"[⚡ $1#$2]($&)",
-		"[📝 $1#$2]($&)",
+		"[🐈‍⬛🔨 $1#$2]($&)",
+		"[🐈‍⬛🛠︎ $1#$2]($&)",
+		"[🐈‍⬛ $1]($&)",
 		"[📖 $1]($&)",
 	],
 	settingsFormatVersion: 1,
