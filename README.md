@@ -36,7 +36,7 @@ Text areas can be small by default. You can resize them by drag at right down co
 
 ## Installation
 
-[//]: # (Install from Obsidian Community Plugins: [Open in Obsidian](https://obsidian.md/plugins?id=paste-transform)
+Install from Obsidian Community Plugins (soon): https://obsidian.md/plugins?id=paste-transform
 
 ### Manual Installation
 
