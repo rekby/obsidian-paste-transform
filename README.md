@@ -34,6 +34,16 @@ If you make a mistake in regexp - error will output to "Try destination"
 ## Resize text area
 Text areas can be small by default. You can resize them by drag at right down corner.
 
+## Installation
+
+[//]: # (Install from Obsidian Community Plugins: [Open in Obsidian](https://obsidian.md/plugins?id=paste-transform)
+
+### Manual Installation
+
+1. Download the `.zip` file from the [latest release](https://github.com/rekby/obsidian-paste-transform/releases).
+2. Unzip into: `{VaultFolder}/.obsidian/plugins/`
+3. Reload obsidian
+
 # Versioning
 Current version system is 0.X.Y, where X changed when update contains some incompatible changes (see in release notes).
 Y changes for updates without incompatible changes (bug fix, add new features, etc.).
