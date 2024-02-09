@@ -72,8 +72,10 @@ export default class PasteTransform extends Plugin {
 			console.log(`Replaced '${plainText}' -> '${result}'`);
 		}
 
-		this.app.workspace.activeEditor?.editor?.replaceSelection(result);
-		event.preventDefault()
+		if (result != plainText) {
+			this.app.workspace.activeEditor?.editor?.replaceSelection(result);
+			event.preventDefault()
+		}
 	}
 
 	onunload() {
