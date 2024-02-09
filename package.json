@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-paste-transform-plugin",
-	"version": "0.1.7",
+	"version": "0.1.8",
 	"description": "Plugin for handle paste text and transform it by regexps",
 	"main": "main.js",
 	"scripts": {
