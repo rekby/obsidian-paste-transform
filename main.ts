@@ -1,11 +1,10 @@
 import {App, Plugin, PluginSettingTab, Setting, TextAreaComponent} from 'obsidian';
 
-// Remember to rename these classes and interfaces!
-
 interface PasteTransformSettings {
 	patterns: string[],
 	replacers: string[],
 	settingsFormatVersion: number,
+	debugMode: boolean,
 }
 
 const DEFAULT_SETTINGS: PasteTransformSettings = {
@@ -22,6 +21,7 @@ const DEFAULT_SETTINGS: PasteTransformSettings = {
 		"[📖 $1]($&)",
 	],
 	settingsFormatVersion: 1,
+	debugMode: false,
 }
 
 class ReplaceRule {
@@ -49,7 +49,9 @@ export default class PasteTransform extends Plugin {
 
 	onPaste(event: ClipboardEvent){
 		let types = event.clipboardData?.types;
-		console.log("transform plugin, clipboard content types:", types);
+		if (this.settings.debugMode) {
+			console.log("transform plugin, clipboard content types:", types);
+		}
 		if (types === undefined || types.length != 1 || types[0] != "text/plain"){
 			return;
 		}
@@ -59,7 +61,9 @@ export default class PasteTransform extends Plugin {
 		}
 
 		let result = this.applyRules(plainText);
-		console.log(`Replaced '${plainText}' -> '${result}'`);
+		if (this.settings.debugMode) {
+			console.log(`Replaced '${plainText}' -> '${result}'`);
+		}
 
 		this.app.workspace.activeEditor?.editor?.replaceSelection(result);
 		event.preventDefault()
@@ -194,8 +198,8 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 		;
 
 		new Setting(containerEl)
-			.setName("Try source")
-			.setDesc("Write here example of pasted text")
+			.setName("Try rules")
+			.setDesc("Write original text here")
 			.addTextArea(ta=> {
 				trySource = ta;
 				ta.setPlaceholder("Sample text")
@@ -204,12 +208,22 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 				})
 			});
 		new Setting(containerEl)
-			.setName("Try destination")
-			.setDesc("Here is result of apply rules to Try source text")
+			.setName("Result")
+			.setDesc("The result of rules apply to original text")
 			.addTextArea(ta => {
 				tryDest = ta;
 				ta.setPlaceholder("Transform result")
 				ta.setDisabled(true);
+			});
+
+		new Setting(containerEl)
+			.setName("Debug mode")
+			.addToggle(toggle => {
+				toggle.setValue(this.plugin.settings.debugMode);
+				toggle.onChange(async value => {
+					this.plugin.settings.debugMode = value
+					await this.plugin.saveSettings();
+				})
 			})
 	}
 }

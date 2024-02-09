@@ -6,6 +6,5 @@
 	"description": "Handle pasted text and and transform it by regexp rules.",
 	"author": "Timofey Koolin",
 	"authorUrl": "https://github.com/rekby",
-	"isDesktopOnly": false,
-	"license": "Apache-2.0"
+	"isDesktopOnly": false
 }
