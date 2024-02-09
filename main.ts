@@ -48,6 +48,13 @@ export default class PasteTransform extends Plugin {
 	}
 
 	onPaste(event: ClipboardEvent){
+		if(event.defaultPrevented){
+			if (this.settings.debugMode) {
+				console.log("It doesn't try to apply rules because event prevented already.");
+			}
+			return;
+		}
+
 		let types = event.clipboardData?.types;
 		if (this.settings.debugMode) {
 			console.log("transform plugin, clipboard content types:", types);
