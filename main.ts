@@ -9,10 +9,10 @@ interface PasteTransformSettings {
 
 const DEFAULT_SETTINGS: PasteTransformSettings = {
 	patterns: [
-		"^https://github.com/[^/]+/([^/]+)/issues/(\\d+)$",
-		"^https://github.com/[^/]+/([^/]+)/pull/(\\d+)$",
-		"^https://github.com/[^/]+/([^/]+)$",
-		"^https://\\w+.wikipedia.org/wiki/([^\\s]+)$",
+		"https://github.com/[^/\\s]+/([^/\\s]+)/issues/(\\d+)",
+		"https://github.com/[^/\\s]+/([^/\\s]+)/pull/(\\d+)",
+		"https://github.com/[^/\\s]+/([^/\\s]+)",
+		"https://\\w+.wikipedia.org/wiki/([^\\s]+)",
 	],
 	replacers: [
 		"[🐈‍⬛🔨 $1#$2]($&)",
