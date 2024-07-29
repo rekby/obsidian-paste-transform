@@ -109,16 +109,11 @@ export default class PasteTransform extends Plugin {
 			return ""
 		}
 
-		let result = source;
-
 		for (let rule of this.rules){
-			if (source.search(rule.pattern) != -1) {
-				result = source.replace(rule.pattern, rule.replacer);
-				break
-			}
+			source = source.replace(rule.pattern, rule.replacer);
 		}
 
-		return result;
+		return source;
 	}
 }
 
