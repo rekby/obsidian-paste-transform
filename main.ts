@@ -176,7 +176,7 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 			.addTextArea(ta =>
 				{
 					patternsTa = ta;
-					patternsTa.setPlaceholder("patter 1\npattern 2\n")
+					patternsTa.setPlaceholder("pattern 1\npattern 2\n")
 					patternsTa.setValue(this.plugin.settings.patterns.join("\n") + "\n")
 					patternsTa.onChange(async value=> {
 						await handleTextChange(value, values => {
