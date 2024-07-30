@@ -176,13 +176,8 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 			.addTextArea(ta =>
 				{
 					patternsTa = ta;
-					patternsTa.setPlaceholder("patter 1\npattern 2\n")
-
-					let patternsString = "";
-					for (let val of this.plugin.settings.patterns){
-						patternsString += val + "\n"
-					}
-					patternsTa.setValue(patternsString)
+					patternsTa.setPlaceholder("pattern 1\npattern 2\n")
+					patternsTa.setValue(this.plugin.settings.patterns.join("\n") + "\n")
 					patternsTa.onChange(async value=> {
 						await handleTextChange(value, values => {
 							plugin.settings.patterns = values;
@@ -193,11 +188,7 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 			.addTextArea(ta=>{
 				replacersTa = ta;
 				replacersTa.setPlaceholder("replacer 1\nreplacer 2\n")
-				let replacersString = "";
-				for (let val of this.plugin.settings.replacers){
-					replacersString += val + "\n"
-				}
-				replacersTa.setValue(replacersString)
+				replacersTa.setValue(this.plugin.settings.replacers.join("\n") + "\n")
 				replacersTa.onChange(async value=> {
 					await handleTextChange(value, values => {
 						plugin.settings.replacers = values;
