@@ -29,7 +29,7 @@ class ReplaceRule {
 	replacer: string;
 
 	constructor(pattern: string, replacer: string) {
-		this.pattern = new RegExp(pattern, 'g');
+		this.pattern = new RegExp(pattern, 'gm');
 		this.replacer = replacer;
 	}
 }
