@@ -68,7 +68,7 @@ class ReplaceRule {
 	script: string | null;
 
 	constructor(pattern: string, replacer: string, script: string | null = null) {
-		this.pattern = new RegExp(pattern); // Remove 'g' flag
+		this.pattern = new RegExp(pattern);
 		this.replacer = replacer;
 		this.script = script;
 	}
@@ -77,14 +77,10 @@ class ReplaceRule {
 		if (this.script) {
 			try {
 				const startTime = Date.now();
-				// Create an async function that wraps the user's script
-				const asyncScript = `
-					(async (match) => {
-						${this.script}
-					})(match)
-				`;
 				// Execute the script and return the result
-				const result = await eval(asyncScript);
+				const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+				const userFunc = new AsyncFunction('match', this.script);
+				const result = await userFunc(match);
 				const endTime = Date.now();
 				if (debugMode) {
 					console.log(`Matched regex: ${this.pattern}`);
