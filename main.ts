@@ -26,6 +26,16 @@ interface PasteTransformSettingsV1 {
 	debugMode: boolean,
 }
 
+const replaceAsync = async (str: string, globalRegex: RegExp, localRegex: RegExp, asyncFn: (match: RegExpMatchArray) => Promise<any>) => {
+    const promises: Promise<any>[] = []
+    str.replace(globalRegex, (substring) => {
+        promises.push(asyncFn(substring.match(localRegex)!))
+        return ""
+    })
+    const replacements = await Promise.all(promises)
+    return str.replace(globalRegex, () => replacements.shift())
+}
+
 const DEFAULT_SETTINGS: PasteTransformSettingsV2 = {
 	rules: [
 		{
@@ -63,12 +73,14 @@ const DEFAULT_SETTINGS: PasteTransformSettingsV2 = {
 }
 
 class ReplaceRule {
-	pattern: RegExp;
+	pattern: RegExp; // Non-global version for script rules
+	globalPattern: RegExp; // Global version for regex replacer rules
 	replacer: string;
 	script: string | null;
 
 	constructor(pattern: string, replacer: string, script: string | null = null) {
 		this.pattern = new RegExp(pattern);
+		this.globalPattern = new RegExp(pattern, 'g');
 		this.replacer = replacer;
 		this.script = script;
 	}
@@ -243,13 +255,20 @@ export default class PasteTransform extends Plugin {
 		}
 
 		if (rule.script) {
-			// If a script is defined, execute it
-			return await rule.executeScript(match, this.settings.debugMode);
-		} else {
-			// Otherwise, use the default replacer
-			const result = source.replace(rule.pattern, rule.replacer);
+			// For script rules, use the async replace function to process all matches
+			const result = await replaceAsync(source, rule.globalPattern, rule.pattern, async (match: RegExpMatchArray) => {
+				return await rule.executeScript(match, this.settings.debugMode);
+			});
 			if (this.settings.debugMode) {
-				console.log(`Matched regex: ${rule.pattern}`);
+				console.log(`Matched regex: ${rule.globalPattern}`);
+				console.log(`Result: '${result}'`);
+			}
+			return result;
+		} else {
+			// For regex replacer rules, use global pattern to replace all occurrences
+			const result = source.replace(rule.globalPattern, rule.replacer);
+			if (this.settings.debugMode) {
+				console.log(`Matched regex: ${rule.globalPattern}`);
 				console.log(`Result: '${result}'`);
 			}
 			return result;

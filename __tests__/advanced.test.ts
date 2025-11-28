@@ -129,4 +129,37 @@ describe('PasteTransform Advanced Features', () => {
     // Should return the original text if there's an error
     expect(result).toBe('error-test:should-not-change');
   });
+
+  // Tests for multiple matches replacement
+  it('should replace all matches with regex replacer (fixed behavior)', async () => {
+    plugin.settings.rules = [
+      {
+        pattern: 'abc',
+        type: 'replace',
+        replacer: 'XYZ',
+        script: ''
+      }
+    ];
+    plugin.compileRules();
+
+    const result = await plugin.applyRules('abc def abc ghi abc');
+    // Should now replace all matches
+    expect(result).toBe('XYZ def XYZ ghi XYZ');
+  });
+
+  it('should replace all matches with script replacer (fixed behavior)', async () => {
+    plugin.settings.rules = [
+      {
+        pattern: 'num:(\\d+)',
+        type: 'script',
+        replacer: '',
+        script: 'return "NUMBER:" + match[1];'
+      }
+    ];
+    plugin.compileRules();
+
+    const result = await plugin.applyRules('num:123 and num:456 and num:789');
+    // Should now replace all matches
+    expect(result).toBe('NUMBER:123 and NUMBER:456 and NUMBER:789');
+  });
 });
