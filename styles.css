@@ -1,0 +1,44 @@
+.paste-code-transform .rule-container {
+	padding: 15px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.paste-code-transform .rule-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 10px;
+}
+
+.paste-code-transform .rule-container input[type="text"],
+.paste-code-transform .rule-container textarea {
+	width: 100%;
+}
+
+.paste-code-transform .pattern-container,
+.paste-code-transform .replacer-container,
+.paste-code-transform .script-container {
+	margin-bottom: 10px;
+}
+
+.paste-code-transform .pattern-container label,
+.paste-code-transform .replacer-container label,
+.paste-code-transform .script-container label {
+	display: block;
+	margin-bottom: 5px;
+}
+
+.paste-code-transform .type-dropdown-container,
+.paste-code-transform .delete-button-container {
+	display: inline-block;
+}
+
+.paste-code-transform .type-dropdown-container {
+	flex: 1;
+	margin-right: 10px;
+}
+
+.paste-code-transform .add-button-container {
+	margin-top: 15px;
+	margin-bottom: 15px;
+}
