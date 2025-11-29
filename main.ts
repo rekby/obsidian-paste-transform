@@ -374,7 +374,17 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 				scriptContainer.createEl('label', {text: 'Script'});
 				const scriptInput = new TextAreaComponent(scriptContainer);
 				scriptInput.setValue(rule.script);
-				scriptInput.setPlaceholder("// Enter JavaScript code here\n// You can use async/await directly\nconst response = await fetch('https://httpbin.org/get');\nconst data = await response.json();\nreturn data.url;");
+				scriptInput.setPlaceholder(
+					`
+					// WARNING! Never! Never! Paste here code that you do not understand!
+					// It will have access to your entire computer and can steal your data!
+					//
+					// Enter JavaScript code here
+					// You can use async/await directly, ex.
+					const response = await fetch('https://httpbin.org/get');
+					const data = await response.json();
+					return data.url;
+					`.replace(/(\n)\s+/g, '\n'));
 				scriptInput.inputEl.style.width = '100%';
 				scriptInput.inputEl.style.minHeight = '100px';
 				scriptInput.inputEl.style.fontFamily = "monospace";
