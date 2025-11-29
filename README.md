@@ -33,7 +33,7 @@ The JavaScript code will receive a `match` object (the result of `string.match(r
 
 The code can be asynchronous (using `await`) and can make HTTP requests (using `fetch`). You don't need to manually wrap your code in an async function - the plugin will automatically handle this for you.
 
-Example of a async script rule:
+Example of an async script rule:
 ```javascript
 // Example of an async HTTP request
 const url = 'https://httpbin.org/get?input=' + encodeURIComponent(match[1]);
