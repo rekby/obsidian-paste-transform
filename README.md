@@ -29,23 +29,33 @@ The plugin contains some default rules for GitHub and Wikipedia as example.
 ### JavaScript execution rules
 You can also create rules that execute JavaScript code. To do this, select "Script Replacer" from the dropdown menu when creating a new rule.
 
-The JavaScript code will receive a `match` object (the result of `string.match(regexp)`). The code should return the replacement string.
+The JavaScript code will receive a `ctx` object with the following properties:
+- `ctx.foundText` - the matched substring (convenient for simple cases)
+- `ctx.match` - the full match object with capture groups (result of `string.match(regexp)`)
+
+The code should return the replacement string.
 
 The code can be asynchronous (using `await`) and can make HTTP requests (using `fetch`). You don't need to manually wrap your code in an async function - the plugin will automatically handle this for you.
 
-Example of an async script rule:
+Example of a simple script using the matched text:
+```javascript
+// Simple string manipulation using the matched text
+return ctx.foundText.toUpperCase();
+```
+
+Example using capture groups:
+```javascript
+// Access capture groups from the regex
+return ctx.match[1].toUpperCase();
+```
+
+Example of an async script rule with HTTP request:
 ```javascript
 // Example of an async HTTP request
-const url = 'https://httpbin.org/get?input=' + encodeURIComponent(match[1]);
+const url = 'https://httpbin.org/get?input=' + encodeURIComponent(ctx.match[1]);
 const response = await fetch(url);
 const data = await response.json();
 return data.url;
-```
-For simple transformations that don't require asynchronous operations, you can write synchronous JavaScript code:
-
-```javascript
-// Simple string manipulation
-return match[1].toUpperCase();
 ```
 
 ## Try result

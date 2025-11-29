@@ -9,4 +9,10 @@ module.exports = {
   Setting: class Setting {},
   TextAreaComponent: class TextAreaComponent {},
   App: class App {},
+  Notice: class Notice {
+    constructor(message, duration) {
+      this.message = message;
+      this.duration = duration;
+    }
+  },
 };
