@@ -60,7 +60,27 @@
 
 .paste-code-transform .test-textarea {
 	width: 100%;
-	min-height: 80px;
+}
+
+.test-rules-setting {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+}
+
+.test-rules-setting .setting-item-info {
+	margin-bottom: 5px;
+}
+
+.test-rules-setting .setting-item-control {
+	width: 100%;
+	max-width: 100%;
+}
+
+.test-rules-setting .setting-item-control textarea {
+	width: 100% !important;
+	max-width: 100% !important;
+	box-sizing: border-box;
 }
 
 .paste-code-transform .script-textarea {

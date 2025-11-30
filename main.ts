@@ -577,6 +577,9 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 	}
 
 	private renderTestSection(containerEl: HTMLElement): void {
+		// Create a container for test section with our custom class
+		const testContainer = containerEl.createDiv({cls: 'paste-code-transform'});
+		
 		// Try rules section
 		let trySource: TextAreaComponent | null = null;
 		let tryDest: TextAreaComponent | null = null;
@@ -590,7 +593,7 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 			}
 		};
 		
-		new Setting(containerEl)
+		const sourceSetting = new Setting(testContainer)
 			.setName("Test Rules")
 			.setDesc("Test your rules with sample text")
 			.addTextArea(ta => {
@@ -601,16 +604,18 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 					await handleChanges();
 				});
 			});
+		sourceSetting.settingEl.classList.add('test-rules-setting');
 			
-		new Setting(containerEl)
+		const resultSetting = new Setting(testContainer)
 			.setName("Test Result")
 			.setDesc("The result after applying rules to the sample text")
 			.addTextArea(ta => {
 				tryDest = ta;
 				ta.setPlaceholder("Transformed result will appear here");
-			ta.inputEl.classList.add('test-textarea');
-			ta.setDisabled(true);
-		});
+				ta.inputEl.classList.add('test-textarea');
+				ta.setDisabled(true);
+			});
+		resultSetting.settingEl.classList.add('test-rules-setting');
 	}
 
 	private renderRulesSection(containerEl: HTMLElement): void {
