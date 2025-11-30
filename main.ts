@@ -511,7 +511,9 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 						// User wants to enable script rules - show security warning
 						const accepted = await this.showSecurityWarningAndAccept();
 						if (!accepted) {
-							toggle.setValue(false);
+							// User cancelled - revert toggle without triggering onChange again
+							// We need to refresh the entire display to reset the toggle properly
+							this.display();
 							return;
 						}
 						// Security accepted, setting is already saved in showSecurityWarningAndAccept
@@ -537,7 +539,9 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 							this.plugin.compileRules(); // Recompile to exclude script rules immediately
 							this.display(); // Refresh UI to show disabled rules
 						} else {
-							toggle.setValue(true);
+							// User cancelled - revert toggle without triggering onChange again
+							// We need to refresh the entire display to reset the toggle properly
+							this.display();
 						}
 				}
 			});
@@ -656,17 +660,23 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 				typeDropdown.setDisabled(true);
 			}
 			
-			// Delete button
-			const deleteButtonContainer = headerRow.createDiv({cls: 'delete-button-container'});
-			const deleteButton = new ButtonComponent(deleteButtonContainer);
-			deleteButton.setIcon('trash');
-			deleteButton.setTooltip('Delete rule');
-			deleteButton.onClick(async () => {
+		// Delete button
+		const deleteButtonContainer = headerRow.createDiv({cls: 'delete-button-container'});
+		const deleteButton = new ButtonComponent(deleteButtonContainer);
+		deleteButton.setIcon('trash');
+		deleteButton.setTooltip('Delete rule');
+		deleteButton.onClick(async () => {
+			const confirmed = confirm(
+				`Удалить правило #${ruleNumber}?\n\n` +
+				`Regex: ${rule.pattern}`
+			);
+			if (confirmed) {
 				this.plugin.settings.rules.splice(index, 1);
 				await this.plugin.saveSettings();
 				this.plugin.compileRules();
 				this.display(); // Re-render the settings tab
-			});
+			}
+		});
 			
 		// Enabled toggle
 		const enabledToggle = new Setting(ruleContainer);
