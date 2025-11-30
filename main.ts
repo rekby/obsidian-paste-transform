@@ -150,10 +150,10 @@ class ReplaceRule {
 				}
 				return result;
 			} catch (error) {
-			console.error("Error executing script:", error);
+			console.error(`Error executing script for rule #${ruleNumber}:`, error);
 			// Show error notification in Obsidian
 			const errorMessage = error instanceof Error ? error.message : String(error);
-			new Notice(`Script execution error: ${errorMessage}`, NOTICE_DURATION_NORMAL);
+			new Notice(`Rule #${ruleNumber} script execution error: ${errorMessage}`, NOTICE_DURATION_NORMAL);
 			// Return the original match if there's an error
 			return match[0];
 			}
