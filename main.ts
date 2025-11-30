@@ -250,24 +250,29 @@ export default class PasteTransform extends Plugin {
 		});
 
 		// If a rule matches, prevent default paste immediately (before async operations)
+		let preventedDefault = false;
 		if (hasMatchingRule) {
 			event.preventDefault();
+			preventedDefault = true;
 		}
 
 		// Apply all rules sequentially
 		const {changed, result} = await this.applyRules(plainText);
 		
-		// If any rule matched and changed the text, insert the transformed text
-		if (changed) {
+		// If we prevented default paste, we must insert text (either transformed or original)
+		if (preventedDefault) {
+			// Use the transformed result if changed, otherwise use original text
+			const textToInsert = changed ? result : plainText;
+			
 			if (this.settings.debugMode) {
-				console.log(`Final text: '${result}'`);
+				console.log(`Final text: '${textToInsert}'`);
 			}
 			
-			// Insert the transformed text
-			this.app.workspace.activeEditor?.editor?.replaceSelection(result);
+			// Insert the text
+			this.app.workspace.activeEditor?.editor?.replaceSelection(textToInsert);
 			
 			if (this.settings.debugMode) {
-				console.log(`Replaced selection with: '${result}'`);
+				console.log(`Replaced selection with: '${textToInsert}'`);
 			}
 		}
 		// If no rules match, we don't call preventDefault() and let the normal paste happen
@@ -341,9 +346,17 @@ export default class PasteTransform extends Plugin {
 				if (rule.type === 'script' && !this.settings.scriptSecurityWarningAccepted) {
 					continue;
 				}
-				this.rules.push(
-					new ReplaceRule(rule.pattern, rule.replacer, rule.type === 'script' ? rule.script : null, ruleNumber)
-				)
+				try {
+					this.rules.push(
+						new ReplaceRule(rule.pattern, rule.replacer, rule.type === 'script' ? rule.script : null, ruleNumber)
+					)
+				} catch (error) {
+					// Handle invalid regex patterns
+					console.error(`Error compiling rule #${ruleNumber}:`, error);
+					const errorMessage = error instanceof Error ? error.message : String(error);
+					new Notice(`Rule #${ruleNumber} has invalid pattern: ${errorMessage}`, NOTICE_DURATION_NORMAL);
+					// Skip this rule and continue with others
+				}
 			}
 		}
 	}

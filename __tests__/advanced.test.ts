@@ -715,4 +715,68 @@ describe('PasteTransform Advanced Features', () => {
       }
     });
   });
+
+  describe('Error Recovery During Paste', () => {
+    it('should return original text when all matching rules fail', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      mockNoticeConstructor.mockClear();
+
+      plugin.settings.rules = [
+        {
+          pattern: 'test',
+          type: 'script',
+          replacer: '',
+          script: 'throw new Error("Script failed");',
+          enabled: true
+        }
+      ];
+      plugin.compileRules();
+
+      const {changed, result} = await plugin.applyRules('test');
+      
+      // When rule fails, it should return original text
+      expect(result).toBe('test');
+      // But changed should be false since transformation failed
+      expect(changed).toBe(false);
+      
+      // Verify that error notification was shown
+      expect(mockNoticeConstructor).toHaveBeenCalledWith(
+        expect.stringContaining('script execution error'),
+        5000
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should handle invalid regex patterns in compileRules gracefully', () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      mockNoticeConstructor.mockClear();
+
+      plugin.settings.rules = [
+        {
+          pattern: '[invalid(regex',  // Invalid regex pattern
+          type: 'replace',
+          replacer: 'replacement',
+          script: '',
+          enabled: true
+        },
+        {
+          pattern: 'valid',
+          type: 'replace',
+          replacer: 'VALID',
+          script: '',
+          enabled: true
+        }
+      ];
+      
+      // compileRules should not throw, but skip invalid rule
+      expect(() => plugin.compileRules()).not.toThrow();
+      
+      // Should have compiled only 1 rule (the valid one)
+      expect(plugin.rules.length).toBe(1);
+      expect(plugin.rules[0].pattern.source).toBe('valid');
+
+      consoleErrorSpy.mockRestore();
+    });
+  });
 });
