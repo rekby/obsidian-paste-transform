@@ -112,6 +112,7 @@ class ReplaceRule {
 
 	async executeScript(match: RegExpMatchArray, debugMode: boolean, app: App, ruleNumber: number): Promise<string> {
 		if (this.script) {
+			let timeoutId: NodeJS.Timeout | null = null;
 			try {
 				const startTime = Date.now();
 				// Create an async function with context parameter
@@ -119,28 +120,27 @@ class ReplaceRule {
 				const fn = new AsyncFunction('ctx', this.script);
 				const context = new ScriptContext(match);
 				
-				// Create a timeout promise that shows notification after configured timeout
+				// Create a timeout that shows notification after configured timeout
 				let timeoutShown = false;
-				const timeoutPromise = new Promise<void>((resolve) => {
-					setTimeout(() => {
-						if (!timeoutShown) {
-							timeoutShown = true;
-							new Notice(`Rule #${ruleNumber} is taking longer than expected`, NOTICE_DURATION_NORMAL);
-						}
-						resolve();
-					}, SCRIPT_TIMEOUT_MS);
-				});
+				timeoutId = setTimeout(() => {
+					if (!timeoutShown) {
+						timeoutShown = true;
+						new Notice(`Rule #${ruleNumber} is taking longer than expected`, NOTICE_DURATION_NORMAL);
+					}
+				}, SCRIPT_TIMEOUT_MS);
 				
 				// Execute the script
 				const scriptPromise = fn(context);
 				
-				// Race between timeout and script, but always wait for script to complete
-				Promise.race([scriptPromise, timeoutPromise]).catch(() => {
-					// Ignore errors in the race, we'll handle them below
-				});
-				
 				// Always wait for the actual script result
 				const result = await scriptPromise;
+				
+				// Clear the timeout since script completed successfully
+				if (timeoutId !== null) {
+					clearTimeout(timeoutId);
+					timeoutId = null;
+				}
+				
 				const endTime = Date.now();
 				if (debugMode) {
 					console.log(`Matched regex: ${this.pattern}`);
@@ -150,6 +150,12 @@ class ReplaceRule {
 				}
 				return result;
 			} catch (error) {
+			// Clear the timeout since script completed (with error)
+			if (timeoutId !== null) {
+				clearTimeout(timeoutId);
+				timeoutId = null;
+			}
+			
 			console.error(`Error executing script for rule #${ruleNumber}:`, error);
 			// Show error notification in Obsidian
 			const errorMessage = error instanceof Error ? error.message : String(error);

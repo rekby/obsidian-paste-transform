@@ -96,7 +96,7 @@ describe('PasteTransform Advanced Features', () => {
     
     // Verify that the error was logged
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "Error executing script:",
+      "Error executing script for rule #1:",
       expect.any(Error)
     );
 
@@ -176,7 +176,7 @@ describe('PasteTransform Advanced Features', () => {
     
     // Verify that the error was logged
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "Error executing script:",
+      "Error executing script for rule #1:",
       expect.any(Error)
     );
 
@@ -248,7 +248,7 @@ describe('PasteTransform Advanced Features', () => {
     
     // Verify that Notice was called with the correct error message
     expect(mockNoticeConstructor).toHaveBeenCalledWith(
-      'Script execution error: Test error message',
+      'Rule #1 script execution error: Test error message',
       5000
     );
     
@@ -387,7 +387,7 @@ describe('PasteTransform Advanced Features', () => {
       
       // Verify that Notice was shown for the error
       expect(mockNoticeConstructor).toHaveBeenCalledWith(
-        'Script execution error: Rule 2 error',
+        'Rule #2 script execution error: Rule 2 error',
         5000
       );
 
@@ -548,6 +548,115 @@ describe('PasteTransform Advanced Features', () => {
       } finally {
         // Restore original Notice
         (require('obsidian') as any).Notice = OriginalNotice;
+      }
+    });
+
+    it('should not show notification when script completes quickly (bug reproduction)', async () => {
+      jest.useFakeTimers();
+      
+      // Track Notice constructor calls
+      const noticeCalls: Array<{message: string, duration: number}> = [];
+      const OriginalNotice = (require('obsidian') as any).Notice;
+      (require('obsidian') as any).Notice = class MockNotice {
+        constructor(message: string, duration: number) {
+          noticeCalls.push({message, duration});
+        }
+      };
+
+      try {
+        plugin.settings.rules = [
+          {
+            pattern: '^quick:(.+)$',
+            type: 'script',
+            replacer: '',
+            script: `
+              // Very fast operation - completes immediately
+              return ctx.match[1].toUpperCase();
+            `,
+            enabled: true
+          }
+        ];
+        plugin.compileRules();
+
+        // Start the async operation
+        const resultPromise = plugin.applyRules('quick:test');
+        
+        // Wait for script to complete
+        await jest.advanceTimersByTimeAsync(0);
+        const {changed, result} = await resultPromise;
+        
+        expect(changed).toBe(true);
+        expect(result).toBe('TEST');
+        
+        // Now advance time to 3000ms to see if timeout fires
+        await jest.advanceTimersByTimeAsync(3000);
+        
+        // Check that no timeout notification was shown
+        const timeoutNotifications = noticeCalls.filter(
+          call => call.message.includes('taking longer than expected')
+        );
+        expect(timeoutNotifications.length).toBe(0);
+      } finally {
+        // Restore original Notice
+        (require('obsidian') as any).Notice = OriginalNotice;
+      }
+    });
+
+    it('should not show notification when script throws error', async () => {
+      jest.useFakeTimers();
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      
+      // Track Notice constructor calls
+      const noticeCalls: Array<{message: string, duration: number}> = [];
+      const OriginalNotice = (require('obsidian') as any).Notice;
+      (require('obsidian') as any).Notice = class MockNotice {
+        constructor(message: string, duration: number) {
+          noticeCalls.push({message, duration});
+        }
+      };
+
+      try {
+        plugin.settings.rules = [
+          {
+            pattern: '^error:(.+)$',
+            type: 'script',
+            replacer: '',
+            script: `
+              throw new Error("Test error");
+            `,
+            enabled: true
+          }
+        ];
+        plugin.compileRules();
+
+        // Start the async operation
+        const resultPromise = plugin.applyRules('error:test');
+        
+        // Wait for script to complete (with error)
+        await jest.advanceTimersByTimeAsync(0);
+        const {changed, result} = await resultPromise;
+        
+        expect(changed).toBe(false);
+        expect(result).toBe('error:test');
+        
+        // Now advance time to 3000ms to see if timeout fires
+        await jest.advanceTimersByTimeAsync(3000);
+        
+        // Check that no timeout notification was shown (only error notification)
+        const timeoutNotifications = noticeCalls.filter(
+          call => call.message.includes('taking longer than expected')
+        );
+        expect(timeoutNotifications.length).toBe(0);
+        
+        // Verify error notification was shown
+        const errorNotifications = noticeCalls.filter(
+          call => call.message.includes('script execution error')
+        );
+        expect(errorNotifications.length).toBeGreaterThan(0);
+      } finally {
+        // Restore original Notice
+        (require('obsidian') as any).Notice = OriginalNotice;
+        consoleErrorSpy.mockRestore();
       }
     });
 
