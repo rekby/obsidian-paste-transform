@@ -86,9 +86,11 @@ const DEFAULT_SETTINGS: PasteTransformSettingsV2 = {
 
 class ScriptContext {
 	match: RegExpMatchArray;  // Full match object with groups
+	debug: boolean;  // Debug mode flag for user scripts
 	
-	constructor(match: RegExpMatchArray) {
+	constructor(match: RegExpMatchArray, debug: boolean) {
 		this.match = match;
+		this.debug = debug;
 	}
 	
 	// Getter for convenient access to the matched substring
@@ -118,7 +120,7 @@ class ReplaceRule {
 				// Create an async function with context parameter
 				const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
 				const fn = new AsyncFunction('ctx', this.script);
-				const context = new ScriptContext(match);
+				const context = new ScriptContext(match, debugMode);
 				
 				// Create a timeout that shows notification after configured timeout
 				let timeoutShown = false;
@@ -378,7 +380,9 @@ export default class PasteTransform extends Plugin {
 			return source;
 		}
 
-		console.log(`Rule #${ruleNumber} triggered`);
+		if (this.settings.debugMode) {
+			console.log(`Rule #${ruleNumber} triggered`);
+		}
 
 		if (rule.script) {
 			// This should never happen (script rules are filtered in compileRules), but check just in case
@@ -439,7 +443,7 @@ export default class PasteTransform extends Plugin {
 	}
 
 		// Log all triggered rules
-		if (triggeredRuleNumbers.length > 0) {
+		if (this.settings.debugMode && triggeredRuleNumbers.length > 0) {
 			console.log(`Triggered rules: #${triggeredRuleNumbers.join(', #')}`);
 		}
 

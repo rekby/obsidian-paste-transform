@@ -32,6 +32,7 @@ You can also create rules that execute JavaScript code. To do this, select "Scri
 The JavaScript code will receive a `ctx` object with the following properties:
 - `ctx.foundText` - the matched substring (convenient for simple cases)
 - `ctx.match` - the full match object with capture groups (result of `string.match(regexp)`)
+- `ctx.debug` - boolean flag indicating if debug mode is enabled (useful for conditional logging)
 
 The code should return the replacement string.
 
@@ -56,6 +57,20 @@ const url = 'https://httpbin.org/get?input=' + encodeURIComponent(ctx.match[1]);
 const response = await fetch(url);
 const data = await response.json();
 return data.url;
+```
+
+Example using debug mode for conditional logging:
+```javascript
+// Use debug flag to conditionally log information
+if (ctx.debug) {
+    console.log('Processing match:', ctx.foundText);
+    console.log('Capture groups:', ctx.match);
+}
+const result = ctx.match[1].toUpperCase();
+if (ctx.debug) {
+    console.log('Result:', result);
+}
+return result;
 ```
 
 ## Try result
