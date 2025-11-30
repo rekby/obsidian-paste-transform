@@ -44,13 +44,15 @@ describe('PasteTransform Backward Compatibility', () => {
     // Check that settings were converted to new format
     expect(plugin.settings.settingsFormatVersion).toBe(2);
     expect(plugin.settings.rules).toHaveLength(2);
+    expect(plugin.settings.scriptSecurityWarningAccepted).toBe(false);
     
     // Check first rule
     expect(plugin.settings.rules[0]).toEqual({
       pattern: '^sync:(.+)$',
       type: 'replace',
       replacer: 'SYNC:$1',
-      script: ''
+      script: '',
+      enabled: true
     });
     
     // Check second rule
@@ -58,7 +60,8 @@ describe('PasteTransform Backward Compatibility', () => {
       pattern: '^error:(.+)$',
       type: 'replace',
       replacer: 'ERROR:$1',
-      script: ''
+      script: '',
+      enabled: true
     });
   });
 
@@ -82,7 +85,8 @@ describe('PasteTransform Backward Compatibility', () => {
     await plugin.loadSettings();
 
     // Test that the converted rule works correctly
-    const result = await plugin.applyRules('sync:abc');
+    const {changed, result} = await plugin.applyRules('sync:abc');
+    expect(changed).toBe(true);
     expect(result).toBe('SYNC:abc');
   });
 
@@ -110,5 +114,76 @@ describe('PasteTransform Backward Compatibility', () => {
 
     // Should only create rules for the minimum length of patterns and replacers
     expect(plugin.settings.rules).toHaveLength(2);
+  });
+
+  it('should block script execution when security warning not accepted', async () => {
+    // Create settings with a script rule
+    const settingsWithScript = {
+      rules: [
+        {
+          pattern: '^test:(.+)$',
+          type: 'script',
+          replacer: '',
+          script: 'return "TRANSFORMED:" + ctx.foundText;',
+          enabled: true
+        }
+      ],
+      settingsFormatVersion: 2,
+      debugMode: false,
+      showRuleNotifications: false,
+      scriptSecurityWarningAccepted: false
+    };
+
+    // Mock loadData to return settings with script
+    jest.spyOn(plugin, 'loadData').mockResolvedValue(settingsWithScript);
+    
+    // Load settings
+    await plugin.loadSettings();
+
+    // Test that the script is NOT executed (should return original text)
+    const {changed, result} = await plugin.applyRules('test:abc');
+    expect(changed).toBe(false);
+    expect(result).toBe('test:abc'); // Original text unchanged
+  });
+
+  it('should allow script execution when security warning is accepted', async () => {
+    // Create settings with a script rule and security accepted
+    const settingsWithScript = {
+      rules: [
+        {
+          pattern: '^test:(.+)$',
+          type: 'script',
+          replacer: '',
+          script: 'return "TRANSFORMED:" + ctx.foundText;',
+          enabled: true
+        }
+      ],
+      settingsFormatVersion: 2,
+      debugMode: false,
+      showRuleNotifications: false,
+      scriptSecurityWarningAccepted: true
+    };
+
+    // Mock loadData to return settings with script
+    jest.spyOn(plugin, 'loadData').mockResolvedValue(settingsWithScript);
+    
+    // Load settings
+    await plugin.loadSettings();
+
+    // Test that the script IS executed
+    const {changed, result} = await plugin.applyRules('test:abc');
+    expect(changed).toBe(true);
+    expect(result).toBe('TRANSFORMED:test:abc');
+  });
+
+  it('should set scriptSecurityWarningAccepted to false by default for new installations', async () => {
+    // Mock loadData to return null (new installation)
+    jest.spyOn(plugin, 'loadData').mockResolvedValue(null);
+    
+    // Load settings
+    await plugin.loadSettings();
+
+    // Check that scriptSecurityWarningAccepted is false by default
+    expect(plugin.settings.scriptSecurityWarningAccepted).toBe(false);
   });
 });

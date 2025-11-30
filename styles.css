@@ -42,3 +42,37 @@
 	margin-top: 15px;
 	margin-bottom: 15px;
 }
+
+.paste-code-transform .rule-number {
+	font-weight: bold;
+	margin-right: 10px;
+}
+
+.paste-code-transform .script-rule-locked-warning {
+	background-color: var(--background-secondary);
+	color: var(--text-normal);
+	padding: 8px;
+	margin-top: 5px;
+	border-radius: 4px;
+	border: 1px solid var(--background-modifier-border);
+	font-size: 0.85em;
+}
+
+.paste-code-transform .test-textarea {
+	width: 100%;
+	min-height: 80px;
+}
+
+.paste-code-transform .script-textarea {
+	width: 100%;
+	min-height: 100px;
+	font-family: monospace;
+}
+
+.paste-code-transform .text-input-full {
+	width: 100%;
+}
+
+.paste-code-transform .setting-no-border {
+	border-top: none;
+}
