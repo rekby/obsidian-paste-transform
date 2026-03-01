@@ -807,4 +807,223 @@ describe('PasteTransform Advanced Features', () => {
       consoleErrorSpy.mockRestore();
     });
   });
+
+  describe('Selected Text Support', () => {
+    it('should use regular replacer when no text is selected', async () => {
+      plugin.settings.rules = [
+        {
+          pattern: '^https://\\S+$',
+          type: 'replace',
+          replacer: '[LINK]($&)',
+          script: '',
+          enabled: true,
+          name: '',
+          replacerWithSelection: '[$SEL]($&)'
+        }
+      ];
+      plugin.compileRules();
+
+      const {changed, result} = await plugin.applyRules('https://example.com', '');
+      expect(changed).toBe(true);
+      expect(result).toBe('[LINK](https://example.com)');
+    });
+
+    it('should use replacerWithSelection when text is selected', async () => {
+      plugin.settings.rules = [
+        {
+          pattern: '^https://\\S+$',
+          type: 'replace',
+          replacer: '[LINK]($&)',
+          script: '',
+          enabled: true,
+          name: '',
+          replacerWithSelection: '[$SEL]($&)'
+        }
+      ];
+      plugin.compileRules();
+
+      const {changed, result} = await plugin.applyRules('https://example.com', 'My Link');
+      expect(changed).toBe(true);
+      expect(result).toBe('[My Link](https://example.com)');
+    });
+
+    it('should use regular replacer when replacerWithSelection is empty, even if text is selected', async () => {
+      plugin.settings.rules = [
+        {
+          pattern: '^https://\\S+$',
+          type: 'replace',
+          replacer: '[LINK]($&)',
+          script: '',
+          enabled: true,
+          name: '',
+          replacerWithSelection: ''
+        }
+      ];
+      plugin.compileRules();
+
+      const {changed, result} = await plugin.applyRules('https://example.com', 'some text');
+      expect(changed).toBe(true);
+      expect(result).toBe('[LINK](https://example.com)');
+    });
+
+    it('should use regular replacer when replacerWithSelection is undefined', async () => {
+      plugin.settings.rules = [
+        {
+          pattern: '^https://\\S+$',
+          type: 'replace',
+          replacer: '[LINK]($&)',
+          script: '',
+          enabled: true,
+          name: ''
+        }
+      ];
+      plugin.compileRules();
+
+      const {changed, result} = await plugin.applyRules('https://example.com', 'some text');
+      expect(changed).toBe(true);
+      expect(result).toBe('[LINK](https://example.com)');
+    });
+
+    it('should replace $SEL in regular replacer', async () => {
+      plugin.settings.rules = [
+        {
+          pattern: '^(https?://\\S+)$',
+          type: 'replace',
+          replacer: '[$SEL]($1)',
+          script: '',
+          enabled: true,
+          name: '',
+          replacerWithSelection: ''
+        }
+      ];
+      plugin.compileRules();
+
+      const {changed, result} = await plugin.applyRules('https://example.com', 'My Link');
+      expect(changed).toBe(true);
+      expect(result).toBe('[My Link](https://example.com)');
+    });
+
+    it('should replace $SEL in replacerWithSelection', async () => {
+      plugin.settings.rules = [
+        {
+          pattern: '^(https?://\\S+)$',
+          type: 'replace',
+          replacer: '[$1]($&)',
+          script: '',
+          enabled: true,
+          name: '',
+          replacerWithSelection: '[$SEL]($&)'
+        }
+      ];
+      plugin.compileRules();
+
+      const {changed, result} = await plugin.applyRules('https://example.com', 'Click Here');
+      expect(changed).toBe(true);
+      expect(result).toBe('[Click Here](https://example.com)');
+    });
+
+    it('should replace multiple $SEL placeholders', async () => {
+      plugin.settings.rules = [
+        {
+          pattern: '^(https?://\\S+)$',
+          type: 'replace',
+          replacer: '[$1]($&)',
+          script: '',
+          enabled: true,
+          name: '',
+          replacerWithSelection: '[$SEL]($& "$SEL")'
+        }
+      ];
+      plugin.compileRules();
+
+      const {changed, result} = await plugin.applyRules('https://example.com', 'title');
+      expect(changed).toBe(true);
+      expect(result).toBe('[title](https://example.com "title")');
+    });
+
+    it('should replace $SEL with empty string when no selection', async () => {
+      plugin.settings.rules = [
+        {
+          pattern: 'test',
+          type: 'replace',
+          replacer: 'before$SELafter',
+          script: '',
+          enabled: true,
+          name: '',
+          replacerWithSelection: ''
+        }
+      ];
+      plugin.compileRules();
+
+      const {changed, result} = await plugin.applyRules('test', '');
+      expect(changed).toBe(true);
+      expect(result).toBe('beforeafter');
+    });
+
+    it('should provide ctx.selectedText in script rules', async () => {
+      plugin.settings.rules = [
+        {
+          pattern: '^(https?://\\S+)$',
+          type: 'script',
+          replacer: '',
+          script: 'return `[${ctx.selectedText}](${ctx.foundText})`;',
+          enabled: true,
+          name: '',
+          replacerWithSelection: ''
+        }
+      ];
+      plugin.compileRules();
+
+      const {changed, result} = await plugin.applyRules('https://example.com', 'Click Here');
+      expect(changed).toBe(true);
+      expect(result).toBe('[Click Here](https://example.com)');
+    });
+
+    it('should provide empty ctx.selectedText when no selection', async () => {
+      plugin.settings.rules = [
+        {
+          pattern: 'test',
+          type: 'script',
+          replacer: '',
+          script: 'return `sel=[${ctx.selectedText}]`;',
+          enabled: true,
+          name: '',
+          replacerWithSelection: ''
+        }
+      ];
+      plugin.compileRules();
+
+      const {changed, result} = await plugin.applyRules('test', '');
+      expect(changed).toBe(true);
+      expect(result).toBe('sel=[]');
+    });
+
+    it('should preserve selectedText across chained rules', async () => {
+      plugin.settings.rules = [
+        {
+          pattern: '^(.+)$',
+          type: 'replace',
+          replacer: 'STEP1:$1',
+          script: '',
+          enabled: true,
+          name: '',
+          replacerWithSelection: ''
+        },
+        {
+          pattern: '^STEP1:(.+)$',
+          type: 'replace',
+          replacer: 'NO_SELECTION',
+          script: '',
+          enabled: true,
+          name: '',
+          replacerWithSelection: '[$SEL]($1)'
+        }
+      ];
+      plugin.compileRules();
+
+      const {changed, result} = await plugin.applyRules('https://example.com', 'My Link');
+      expect(changed).toBe(true);
+      expect(result).toBe('[My Link](https://example.com)');
+    });
+  });
 });

@@ -1,4 +1,5 @@
 import {App, Plugin, PluginSettingTab, Setting, TextAreaComponent, DropdownComponent, ButtonComponent, TextComponent, Notice, setIcon} from 'obsidian';
+import {ScriptContext} from './script-context';
 
 // Script execution timeout in milliseconds
 const SCRIPT_TIMEOUT_MS = 3000;
@@ -19,6 +20,7 @@ interface Rule {
 	script: string;   // Used when type is 'script'
 	enabled: boolean; // Whether the rule is enabled
 	name: string;     // Optional name for the rule
+	replacerWithSelection?: string; // Replacer used when there is selected text; if empty, regular replacer is used
 }
 
 
@@ -46,7 +48,8 @@ const DEFAULT_SETTINGS: PasteTransformSettingsV2 = {
 			replacer: "[🐈‍⬛ $1]($&)",
 			script: "",
 			enabled: true,
-			name: ""
+			name: "",
+			replacerWithSelection: "[🐈‍⬛ $SEL]($&)"
 		},
 		{
 			pattern: "^https://\\w+.wikipedia.org/wiki/([^\\s]+)$",
@@ -54,33 +57,38 @@ const DEFAULT_SETTINGS: PasteTransformSettingsV2 = {
 			replacer: "[📖 $1]($&)",
 			script: "",
 			enabled: true,
-			name: ""
+			name: "",
+			replacerWithSelection: "[📖 $SEL]($&)"
 		},
 		{
 			pattern: "^https://github.com/([^/]+)/([^/]+)/issues/(\\d+)$",
 			type: 'script',
 			replacer: "",
 			script: "" +
+				"// ctx fields: https://github.com/rekby/obsidian-paste-transform/blob/master/script-context.ts\n" +
 				"const url=`https://api.github.com/repos/${ctx.match[1]}/${ctx.match[2]}/issues/${ctx.match[3]}`\n" +
 				"const response = await fetch(url);\n" +
 				"const data = await response.json();\n" +
 				"const title = data.title;\n" +
 				"return `[${ctx.match[2]}#${ctx.match[3]}: ${title}](${ctx.foundText})`;",
 			enabled: false,
-			name: ""
+			name: "",
+			replacerWithSelection: ""
 		},
 		{
 			pattern: "^https://github.com/([^/]+)/([^/]+)/pull/(\\d+)$",
 			type: 'script',
 			replacer: "",
 			script: "" +
+				"// ctx fields: https://github.com/rekby/obsidian-paste-transform/blob/master/script-context.ts\n" +
 				"const url=`https://api.github.com/repos/${ctx.match[1]}/${ctx.match[2]}/pulls/${ctx.match[3]}`\n" +
 				"const response = await fetch(url);\n" +
 				"const data = await response.json();\n" +
 				"const title = data.title;\n" +
 				"return `[${ctx.match[2]}#${ctx.match[3]}: ${title}](${ctx.foundText})`;",
 			enabled: false,
-			name: ""
+			name: "",
+			replacerWithSelection: ""
 		}
 	],
 	settingsFormatVersion: 2,
@@ -89,37 +97,24 @@ const DEFAULT_SETTINGS: PasteTransformSettingsV2 = {
 	scriptSecurityWarningAccepted: false,
 }
 
-class ScriptContext {
-	match: RegExpMatchArray;  // Full match object with groups
-	debug: boolean;  // Debug mode flag for user scripts
-	
-	constructor(match: RegExpMatchArray, debug: boolean) {
-		this.match = match;
-		this.debug = debug;
-	}
-	
-	// Getter for convenient access to the matched substring
-	get foundText(): string {
-		return this.match[0];
-	}
-}
-
 class ReplaceRule {
 	pattern: RegExp;
 	replacer: string;
 	script: string | null;
+	replacerWithSelection: string | null;
 	ruleNumber: number;
 	displayName: string;
 
-	constructor(pattern: string, replacer: string, script: string | null = null, ruleNumber: number, displayName: string) {
+	constructor(pattern: string, replacer: string, script: string | null, ruleNumber: number, displayName: string, replacerWithSelection: string = '') {
 		this.pattern = new RegExp(pattern, 'g'); // Add 'g' flag for global matching
 		this.replacer = replacer;
 		this.script = script;
+		this.replacerWithSelection = replacerWithSelection || null;
 		this.ruleNumber = ruleNumber;
 		this.displayName = displayName;
 	}
 
-	async executeScript(match: RegExpMatchArray, debugMode: boolean, app: App, ruleNumber: number): Promise<string> {
+	async executeScript(match: RegExpMatchArray, debugMode: boolean, app: App, ruleNumber: number, selectedText: string = ''): Promise<string> {
 		if (this.script) {
 			let timeoutId: NodeJS.Timeout | null = null;
 			try {
@@ -127,7 +122,7 @@ class ReplaceRule {
 				// Create an async function with context parameter
 				const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
 				const fn = new AsyncFunction('ctx', this.script);
-				const context = new ScriptContext(match, debugMode);
+				const context = new ScriptContext(match, debugMode, selectedText);
 				
 			// Create a timeout that shows notification after configured timeout
 			let timeoutShown = false;
@@ -183,7 +178,7 @@ class ReplaceRule {
 	}
 
 	// Process all matches in the source text with a script
-	async executeScriptForAllMatches(source: string, debugMode: boolean, app: App, ruleNumber: number): Promise<string> {
+	async executeScriptForAllMatches(source: string, debugMode: boolean, app: App, ruleNumber: number, selectedText: string = ''): Promise<string> {
 		if (!this.script) {
 			return source;
 		}
@@ -203,7 +198,7 @@ class ReplaceRule {
 			const matchEnd = matchStart + match[0].length;
 			
 			// Execute script for this match
-			const replacement = await this.executeScript(match, debugMode, app, ruleNumber);
+			const replacement = await this.executeScript(match, debugMode, app, ruleNumber, selectedText);
 			
 			// Replace this match in the result
 			result = result.substring(0, matchStart) + replacement + result.substring(matchEnd);
@@ -246,8 +241,13 @@ export default class PasteTransform extends Plugin {
 			return;
 		}
 
+		const selectedText = this.app.workspace.activeEditor?.editor?.getSelection() || '';
+
 		if (this.settings.debugMode) {
 			console.log(`Original text: '${plainText}'`);
+			if (selectedText) {
+				console.log(`Selected text: '${selectedText}'`);
+			}
 		}
 
 		// Check if any rule matches (synchronously) before async operations
@@ -266,7 +266,7 @@ export default class PasteTransform extends Plugin {
 		}
 
 		// Apply all rules sequentially
-		const {changed, result} = await this.applyRules(plainText);
+		const {changed, result} = await this.applyRules(plainText, selectedText);
 		
 		// If we prevented default paste, we must insert text (either transformed or original)
 		if (preventedDefault) {
@@ -366,7 +366,7 @@ export default class PasteTransform extends Plugin {
 				}
 				try {
 					this.rules.push(
-						new ReplaceRule(rule.pattern, rule.replacer, rule.type === 'script' ? rule.script : null, ruleNumber, displayName)
+						new ReplaceRule(rule.pattern, rule.replacer, rule.type === 'script' ? rule.script : null, ruleNumber, displayName, rule.replacerWithSelection || '')
 					)
 				} catch (error) {
 					// Handle invalid regex patterns
@@ -384,7 +384,7 @@ export default class PasteTransform extends Plugin {
 	}
 
 	// Execute a specific rule on all matches in the source
-	private async executeRule(rule: ReplaceRule, source: string, ruleNumber: number): Promise<string> {
+	private async executeRule(rule: ReplaceRule, source: string, ruleNumber: number, selectedText: string = ''): Promise<string> {
 		// Reset the regex lastIndex to ensure we start from the beginning
 		rule.pattern.lastIndex = 0;
 		
@@ -408,10 +408,11 @@ export default class PasteTransform extends Plugin {
 			return source; // Return unchanged
 		}
 		// If a script is defined, execute it for all matches
-		return await rule.executeScriptForAllMatches(source, this.settings.debugMode, this.app, ruleNumber);
+		return await rule.executeScriptForAllMatches(source, this.settings.debugMode, this.app, ruleNumber, selectedText);
 	} else {
-		// Otherwise, use the default replacer for all matches
-		const result = source.replace(rule.pattern, rule.replacer);
+		// Use replacerWithSelection when there is selected text and it is configured, otherwise use regular replacer
+		const activeReplacer = (selectedText && rule.replacerWithSelection) ? rule.replacerWithSelection : rule.replacer;
+		const result = source.replace(rule.pattern, activeReplacer).split('$SEL').join(selectedText);
 		if (this.settings.debugMode) {
 			console.log(`${rule.displayName} - Matched regex: ${rule.pattern}`);
 			console.log(`${rule.displayName} - Result: '${result}'`);
@@ -420,7 +421,7 @@ export default class PasteTransform extends Plugin {
 	}
 	}
 
-	public async applyRules(source: string | null | undefined) : Promise<{changed: boolean, result: string}> {
+	public async applyRules(source: string | null | undefined, selectedText: string = '') : Promise<{changed: boolean, result: string}> {
 		if (source === undefined || source === null){
 			return {changed: false, result: ""};
 		}
@@ -433,7 +434,7 @@ export default class PasteTransform extends Plugin {
 	for (const rule of this.rules) {
 		try {
 			const beforeRule = result;
-			result = await this.executeRule(rule, result, rule.ruleNumber);
+			result = await this.executeRule(rule, result, rule.ruleNumber, selectedText);
 			
 			// Check if this rule changed the text
 			if (result !== beforeRule) {
@@ -599,11 +600,12 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 		
 		// Try rules section
 		let trySource: TextAreaComponent | null = null;
+		let trySelectedText: TextAreaComponent | null = null;
 		let tryDest: TextAreaComponent | null = null;
 		
 		const handleChanges = async () => {
 			try {
-				const {result} = await this.plugin.applyRules(trySource?.getValue() || "");
+				const {result} = await this.plugin.applyRules(trySource?.getValue() || "", trySelectedText?.getValue() || "");
 				tryDest?.setValue(result);
 			} catch (e) {
 				tryDest?.setValue("ERROR:\n" + e);
@@ -622,6 +624,19 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 				});
 			});
 		sourceSetting.settingEl.classList.add('test-rules-setting');
+
+		const selectedTextSetting = new Setting(testContainer)
+			.setName("Test Selected Text")
+			.setDesc("Simulate selected text in the editor (used by 'Replacer with selection' and $SEL placeholder)")
+			.addTextArea(ta => {
+				trySelectedText = ta;
+				ta.setPlaceholder("Enter simulated selected text");
+				ta.inputEl.classList.add('test-textarea');
+				ta.onChange(async () => {
+					await handleChanges();
+				});
+			});
+		selectedTextSetting.settingEl.classList.add('test-rules-setting');
 			
 		const resultSetting = new Setting(testContainer)
 			.setName("Test Result")
@@ -783,6 +798,19 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 				await this.plugin.saveSettings();
 				this.plugin.compileRules();
 			});
+
+			// Replacer with selection input (shown only for replace rules)
+			const replacerWithSelectionContainer = ruleContainer.createDiv({cls: 'replacer-container'});
+			replacerWithSelectionContainer.createEl('label', {text: 'Replacer (with selection)'});
+			const replacerWithSelectionInput = new TextComponent(replacerWithSelectionContainer);
+			replacerWithSelectionInput.setValue(rule.replacerWithSelection || '');
+			replacerWithSelectionInput.setPlaceholder("Replacer to use when text is selected (optional)");
+			replacerWithSelectionInput.inputEl.classList.add('text-input-full');
+			replacerWithSelectionInput.onChange(async (value) => {
+				this.plugin.settings.rules[index].replacerWithSelection = value;
+				await this.plugin.saveSettings();
+				this.plugin.compileRules();
+			});
 		}
 			
 		// Script textarea (multi-line if type is 'script')
@@ -897,7 +925,8 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 				replacer: "",
 				script: "",
 				enabled: true,
-				name: ""
+				name: "",
+				replacerWithSelection: ""
 			});
 			await this.plugin.saveSettings();
 			this.plugin.compileRules();

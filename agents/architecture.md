@@ -11,7 +11,8 @@ Version scheme: `0.X.Y` (X = breaking changes, Y = non-breaking)
 ## File Structure
 
 ```
-main.ts                     Main plugin source (~880 lines, single-file plugin)
+main.ts                     Main plugin source (single-file plugin, imports script-context.ts)
+script-context.ts           ScriptContext class — the `ctx` object passed to script rules
 styles.css                  Plugin UI styles (drag-and-drop, test area, rule layout)
 manifest.json               Obsidian plugin manifest (id, version, minAppVersion)
 versions.json               Plugin version -> minimum Obsidian version mapping
@@ -37,7 +38,7 @@ __tests__/
 | `Rule` | interface | Single transform rule: pattern, type, replacer, script, enabled |
 | `PasteTransformSettingsV2` | interface | Current settings format: rules[], debugMode, showRuleNotifications, scriptSecurityWarningAccepted |
 | `PasteTransformSettingsV1` | interface | Legacy settings (patterns[] + replacers[]), converted on load |
-| `ScriptContext` | class | Context passed to script rules: `match`, `foundText`, `debug` |
+| `ScriptContext` | class | Context passed to script rules: `match`, `foundText`, `selectedText`, `debug` — defined in `script-context.ts` |
 | `ReplaceRule` | class | Compiled rule: regex compilation, script execution with timeout, error handling |
 | `PasteTransform` | class (default export) | Plugin class: paste event handler, rule application, settings load/save |
 | `PasteTransformSettingsTab` | class | Settings UI: security toggle, debug toggle, test area, rules list with drag-and-drop |
