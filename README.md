@@ -16,6 +16,15 @@ and paste them to a page.
 # Settings
 ![settings-page.png](attachements%2Fsettings-page.png)
 
+## Paste transform enabled
+
+You can globally enable/disable automatic paste transformation with the `Paste Transform Enabled` toggle in plugin settings.
+
+The plugin also provides 3 commands for Command Palette/hotkeys:
+- `Paste Transform: Enable paste transform`
+- `Paste Transform: Disable paste transform`
+- `Paste Transform: Toggle paste transform`
+
 ## Transform rules
 Each rule contains of regex to match and replacer. 
 Replacer can be either regex replacer or a script.

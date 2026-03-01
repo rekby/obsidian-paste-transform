@@ -30,6 +30,7 @@ interface PasteTransformSettingsV2 {
 	debugMode: boolean,
 	showRuleNotifications: boolean,
 	scriptSecurityWarningAccepted: boolean,
+	pasteTransformEnabled: boolean,
 }
 
 // Old settings format (version 1)
@@ -95,6 +96,7 @@ const DEFAULT_SETTINGS: PasteTransformSettingsV2 = {
 	debugMode: false,
 	showRuleNotifications: true,
 	scriptSecurityWarningAccepted: false,
+	pasteTransformEnabled: true,
 }
 
 class ReplaceRule {
@@ -218,6 +220,30 @@ export default class PasteTransform extends Plugin {
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new PasteTransformSettingsTab(this.app, this));
 
+		this.addCommand({
+			id: 'enable-paste-transform',
+			name: 'Enable paste transform',
+			callback: async () => {
+				await this.setPasteTransformEnabled(true, true);
+			}
+		});
+
+		this.addCommand({
+			id: 'disable-paste-transform',
+			name: 'Disable paste transform',
+			callback: async () => {
+				await this.setPasteTransformEnabled(false, true);
+			}
+		});
+
+		this.addCommand({
+			id: 'toggle-paste-transform',
+			name: 'Toggle paste transform',
+			callback: async () => {
+				await this.togglePasteTransformEnabled(true);
+			}
+		});
+
 		this.registerEvent(this.app.workspace.on("editor-paste", event => this.onPaste(event)));
 	}
 
@@ -225,6 +251,13 @@ export default class PasteTransform extends Plugin {
 		if(event.defaultPrevented){
 			if (this.settings.debugMode) {
 				console.log("It doesn't try to apply rules because event prevented already.");
+			}
+			return;
+		}
+
+		if (!this.settings.pasteTransformEnabled) {
+			if (this.settings.debugMode) {
+				console.log("Paste transform is disabled. Skipping rule application.");
 			}
 			return;
 		}
@@ -321,7 +354,8 @@ export default class PasteTransform extends Plugin {
 				settingsFormatVersion: 2, // Update to new format version
 				debugMode: oldSettings.debugMode || false,
 				showRuleNotifications: true,
-				scriptSecurityWarningAccepted: false
+				scriptSecurityWarningAccepted: false,
+				pasteTransformEnabled: true,
 			};
 		} else {
 			// Use default settings merged with loaded data (new format)
@@ -330,6 +364,11 @@ export default class PasteTransform extends Plugin {
 		// Ensure scriptSecurityWarningAccepted is set (for backward compatibility with v2 without this field)
 		if (this.settings.scriptSecurityWarningAccepted === undefined) {
 			this.settings.scriptSecurityWarningAccepted = false;
+		}
+
+		// Ensure pasteTransformEnabled is set (for backward compatibility with older settings)
+		if (this.settings.pasteTransformEnabled === undefined) {
+			this.settings.pasteTransformEnabled = true;
 		}
 	}
 	
@@ -381,6 +420,27 @@ export default class PasteTransform extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+	}
+
+	public async setPasteTransformEnabled(enabled: boolean, showNotice: boolean = false): Promise<boolean> {
+		if (this.settings.pasteTransformEnabled === enabled) {
+			if (showNotice) {
+				new Notice(`Paste transform is already ${enabled ? 'enabled' : 'disabled'}`, NOTICE_DURATION_SHORT);
+			}
+			return false;
+		}
+
+		this.settings.pasteTransformEnabled = enabled;
+		await this.saveSettings();
+
+		if (showNotice) {
+			new Notice(`Paste transform ${enabled ? 'enabled' : 'disabled'}`, NOTICE_DURATION_SHORT);
+		}
+		return true;
+	}
+
+	public async togglePasteTransformEnabled(showNotice: boolean = false): Promise<boolean> {
+		return await this.setPasteTransformEnabled(!this.settings.pasteTransformEnabled, showNotice);
 	}
 
 	// Execute a specific rule on all matches in the source
@@ -510,11 +570,24 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 		const {containerEl} = this;
 		containerEl.empty();
 
+		this.renderPasteTransformToggle(containerEl);
 		this.renderSecurityToggle(containerEl);
 		this.renderDebugToggle(containerEl);
 		this.renderNotificationsToggle(containerEl);
 		this.renderTestSection(containerEl);
 		this.renderRulesSection(containerEl);
+	}
+
+	private renderPasteTransformToggle(containerEl: HTMLElement): void {
+		new Setting(containerEl)
+			.setName("Paste Transform Enabled")
+			.setDesc("Enable or disable automatic paste transformation by rules.")
+			.addToggle(toggle => {
+				toggle.setValue(this.plugin.settings.pasteTransformEnabled);
+				toggle.onChange(async (value) => {
+					await this.plugin.setPasteTransformEnabled(value);
+				});
+			});
 	}
 
 	private renderSecurityToggle(containerEl: HTMLElement): void {

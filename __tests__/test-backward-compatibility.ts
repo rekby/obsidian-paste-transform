@@ -45,6 +45,7 @@ describe('PasteTransform Backward Compatibility', () => {
     expect(plugin.settings.settingsFormatVersion).toBe(2);
     expect(plugin.settings.rules).toHaveLength(2);
     expect(plugin.settings.scriptSecurityWarningAccepted).toBe(false);
+    expect(plugin.settings.pasteTransformEnabled).toBe(true);
     
     // Check first rule
     expect(plugin.settings.rules[0]).toEqual({
@@ -189,5 +190,37 @@ describe('PasteTransform Backward Compatibility', () => {
 
     // Check that scriptSecurityWarningAccepted is false by default
     expect(plugin.settings.scriptSecurityWarningAccepted).toBe(false);
+    expect(plugin.settings.pasteTransformEnabled).toBe(true);
+  });
+
+  it('should set pasteTransformEnabled to true for old v2 settings without this field', async () => {
+    const v2WithoutPasteToggle = {
+      rules: [],
+      settingsFormatVersion: 2,
+      debugMode: false,
+      showRuleNotifications: false,
+      scriptSecurityWarningAccepted: false
+    };
+
+    jest.spyOn(plugin, 'loadData').mockResolvedValue(v2WithoutPasteToggle);
+    await plugin.loadSettings();
+
+    expect(plugin.settings.pasteTransformEnabled).toBe(true);
+  });
+
+  it('should preserve explicit pasteTransformEnabled value from saved v2 settings', async () => {
+    const v2WithPasteToggleOff = {
+      rules: [],
+      settingsFormatVersion: 2,
+      debugMode: false,
+      showRuleNotifications: false,
+      scriptSecurityWarningAccepted: false,
+      pasteTransformEnabled: false
+    };
+
+    jest.spyOn(plugin, 'loadData').mockResolvedValue(v2WithPasteToggleOff);
+    await plugin.loadSettings();
+
+    expect(plugin.settings.pasteTransformEnabled).toBe(false);
   });
 });

@@ -808,6 +808,101 @@ describe('PasteTransform Advanced Features', () => {
     });
   });
 
+  describe('Paste transform enabled state', () => {
+    it('should not process paste when paste transform is disabled', async () => {
+      plugin.settings.rules = [
+        {
+          pattern: '^https://example.com$',
+          type: 'replace',
+          replacer: '[LINK](https://example.com)',
+          script: '',
+          enabled: true,
+          name: ''
+        }
+      ];
+      plugin.compileRules();
+      plugin.settings.pasteTransformEnabled = false;
+
+      const replaceSelection = jest.fn();
+      (plugin as any).app.workspace = {
+        activeEditor: {
+          editor: {
+            getSelection: () => '',
+            replaceSelection
+          }
+        }
+      };
+
+      const preventDefault = jest.fn();
+      const event = {
+        defaultPrevented: false,
+        preventDefault,
+        clipboardData: {
+          types: ['text/plain'],
+          getData: () => 'https://example.com'
+        }
+      } as unknown as ClipboardEvent;
+
+      await plugin.onPaste(event);
+
+      expect(preventDefault).not.toHaveBeenCalled();
+      expect(replaceSelection).not.toHaveBeenCalled();
+    });
+
+    it('should process paste when paste transform is enabled', async () => {
+      plugin.settings.rules = [
+        {
+          pattern: '^https://example.com$',
+          type: 'replace',
+          replacer: '[LINK](https://example.com)',
+          script: '',
+          enabled: true,
+          name: ''
+        }
+      ];
+      plugin.compileRules();
+      plugin.settings.pasteTransformEnabled = true;
+
+      const replaceSelection = jest.fn();
+      (plugin as any).app.workspace = {
+        activeEditor: {
+          editor: {
+            getSelection: () => '',
+            replaceSelection
+          }
+        }
+      };
+
+      const preventDefault = jest.fn();
+      const event = {
+        defaultPrevented: false,
+        preventDefault,
+        clipboardData: {
+          types: ['text/plain'],
+          getData: () => 'https://example.com'
+        }
+      } as unknown as ClipboardEvent;
+
+      await plugin.onPaste(event);
+
+      expect(preventDefault).toHaveBeenCalledTimes(1);
+      expect(replaceSelection).toHaveBeenCalledWith('[LINK](https://example.com)');
+    });
+
+    it('should save only when enabled state actually changes', async () => {
+      const saveDataSpy = jest.spyOn(plugin, 'saveData').mockResolvedValue(undefined);
+
+      await plugin.setPasteTransformEnabled(true);
+      expect(saveDataSpy).not.toHaveBeenCalled();
+
+      await plugin.setPasteTransformEnabled(false);
+      expect(saveDataSpy).toHaveBeenCalledTimes(1);
+
+      await plugin.togglePasteTransformEnabled();
+      expect(saveDataSpy).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('Selected Text Support', () => {
     it('should use regular replacer when no text is selected', async () => {
       plugin.settings.rules = [
