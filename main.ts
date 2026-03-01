@@ -658,7 +658,7 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 		
 		const renderRule = (rule: Rule, index: number) => {
 			const ruleContainer = rulesContainer.createDiv({cls: 'rule-container'});
-			ruleContainer.draggable = true;
+			ruleContainer.draggable = false;
 			
 			// Check if this is a script rule and security warning is not accepted
 			const isScriptRuleLocked = rule.type === 'script' && !this.plugin.settings.scriptSecurityWarningAccepted;
@@ -669,6 +669,12 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 			// Drag handle
 			const dragHandle = headerRow.createDiv({cls: 'drag-handle'});
 			setIcon(dragHandle, 'grip-vertical');
+			dragHandle.addEventListener('mousedown', () => {
+				ruleContainer.draggable = true;
+			});
+			dragHandle.addEventListener('mouseup', () => {
+				ruleContainer.draggable = false;
+			});
 			
 		// Rule number / name input
 		const ruleNumber = index + 1;
@@ -905,6 +911,7 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 					el.removeClass('drag-over-bottom');
 				});
 				this.draggedIndex = null;
+				ruleContainer.draggable = false;
 			});
 		};
 		
