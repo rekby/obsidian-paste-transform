@@ -796,7 +796,7 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 		deleteButton.setTooltip('Delete rule');
 		deleteButton.onClick(async () => {
 			const confirmed = confirm(
-				`Удалить правило #${ruleNumber}?\n\n` +
+				`Delete rule #${ruleNumber}?\n\n` +
 				`Regex: ${rule.pattern}`
 			);
 			if (confirmed) {
