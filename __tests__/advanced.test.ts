@@ -47,7 +47,8 @@ describe('PasteTransform Advanced Features', () => {
 				type: 'replace',
 				replacer: '$1',
 				script: "",
-				enabled: true
+				enabled: true,
+				name: ""
 			}
 		];
 		plugin.compileRules();
@@ -64,7 +65,8 @@ describe('PasteTransform Advanced Features', () => {
         type: 'script',
         replacer: '',
         script: 'return ctx.match[1].toUpperCase();',
-        enabled: true
+        enabled: true,
+        name: ""
       }
     ];
     plugin.compileRules();
@@ -84,7 +86,8 @@ describe('PasteTransform Advanced Features', () => {
         type: 'script',
         replacer: '',
         script: 'throw new Error("Test error");',
-        enabled: true
+        enabled: true,
+        name: ""
       }
     ];
     plugin.compileRules();
@@ -96,7 +99,7 @@ describe('PasteTransform Advanced Features', () => {
     
     // Verify that the error was logged
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "Error executing script for rule #1:",
+      "Error executing script for Rule #1:",
       expect.any(Error)
     );
 
@@ -117,7 +120,8 @@ describe('PasteTransform Advanced Features', () => {
             }, 10);
           });
         `,
-        enabled: true
+        enabled: true,
+        name: ""
       }
     ];
     plugin.compileRules();
@@ -140,7 +144,8 @@ describe('PasteTransform Advanced Features', () => {
           const input = ctx.match[1];
           return input.toUpperCase();
         `,
-        enabled: true
+        enabled: true,
+        name: ""
       }
     ];
     plugin.compileRules();
@@ -164,7 +169,8 @@ describe('PasteTransform Advanced Features', () => {
           await new Promise(resolve => setTimeout(resolve, 1));
           throw new Error("Test error");
         `,
-        enabled: true
+        enabled: true,
+        name: ""
       }
     ];
     plugin.compileRules();
@@ -176,7 +182,7 @@ describe('PasteTransform Advanced Features', () => {
     
     // Verify that the error was logged
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "Error executing script for rule #1:",
+      "Error executing script for Rule #1:",
       expect.any(Error)
     );
 
@@ -208,7 +214,8 @@ describe('PasteTransform Advanced Features', () => {
           "const data = await response.json();\n" +
           "const title = data.title;\n" +
           "return `[${ctx.match[2]}#${ctx.match[3]}: ${title}](${ctx.foundText})`;",
-        enabled: true
+        enabled: true,
+        name: ""
       }
     ];
     plugin.compileRules();
@@ -235,7 +242,8 @@ describe('PasteTransform Advanced Features', () => {
         type: 'script',
         replacer: '',
         script: 'throw new Error("Test error message");',
-        enabled: true
+        enabled: true,
+        name: ""
       }
     ];
     plugin.compileRules();
@@ -265,7 +273,8 @@ describe('PasteTransform Advanced Features', () => {
           type: 'replace',
           replacer: '[GitHub: $1]',
           script: '',
-          enabled: true
+          enabled: true,
+          name: ""
         }
       ];
       plugin.compileRules();
@@ -284,7 +293,8 @@ describe('PasteTransform Advanced Features', () => {
           type: 'script',
           replacer: '',
           script: 'return "RESULT" + ctx.match[1];',
-          enabled: true
+          enabled: true,
+          name: ""
         }
       ];
       plugin.compileRules();
@@ -306,7 +316,8 @@ describe('PasteTransform Advanced Features', () => {
             await new Promise(resolve => setTimeout(resolve, 5));
             return "ASYNC" + ctx.match[1];
           `,
-          enabled: true
+          enabled: true,
+          name: ""
         }
       ];
       plugin.compileRules();
@@ -325,21 +336,24 @@ describe('PasteTransform Advanced Features', () => {
           type: 'replace',
           replacer: 'STEP1',
           script: '',
-          enabled: true
+          enabled: true,
+          name: ""
         },
         {
           pattern: 'STEP1',
           type: 'replace',
           replacer: 'STEP2',
           script: '',
-          enabled: true
+          enabled: true,
+          name: ""
         },
         {
           pattern: 'STEP2',
           type: 'script',
           replacer: '',
           script: 'return "FINAL";',
-          enabled: true
+          enabled: true,
+          name: ""
         }
       ];
       plugin.compileRules();
@@ -360,21 +374,24 @@ describe('PasteTransform Advanced Features', () => {
           type: 'replace',
           replacer: 'RESULT1',
           script: '',
-          enabled: true
+          enabled: true,
+          name: ""
         },
         {
           pattern: 'RESULT1',
           type: 'script',
           replacer: '',
           script: 'throw new Error("Rule 2 error");',
-          enabled: true
+          enabled: true,
+          name: ""
         },
         {
           pattern: 'RESULT1',
           type: 'replace',
           replacer: 'RESULT3',
           script: '',
-          enabled: true
+          enabled: true,
+          name: ""
         }
       ];
       plugin.compileRules();
@@ -401,14 +418,16 @@ describe('PasteTransform Advanced Features', () => {
           type: 'replace',
           replacer: 'A',
           script: '',
-          enabled: true
+          enabled: true,
+          name: ""
         },
         {
           pattern: 'A',
           type: 'replace',
           replacer: 'AA',
           script: '',
-          enabled: true
+          enabled: true,
+          name: ""
         }
       ];
       plugin.compileRules();
@@ -426,7 +445,8 @@ describe('PasteTransform Advanced Features', () => {
           type: 'replace',
           replacer: 'REPLACED',
           script: '',
-          enabled: true
+          enabled: true,
+          name: ""
         }
       ];
       plugin.compileRules();
@@ -473,7 +493,8 @@ describe('PasteTransform Advanced Features', () => {
               await new Promise(resolve => setTimeout(resolve, 3500));
               return ctx.match[1].toUpperCase();
             `,
-            enabled: true
+            enabled: true,
+            name: ""
           }
         ];
         plugin.compileRules();
@@ -524,7 +545,8 @@ describe('PasteTransform Advanced Features', () => {
               await new Promise(resolve => setTimeout(resolve, 100));
               return ctx.match[1].toUpperCase();
             `,
-            enabled: true
+            enabled: true,
+            name: ""
           }
         ];
         plugin.compileRules();
@@ -573,7 +595,8 @@ describe('PasteTransform Advanced Features', () => {
               // Very fast operation - completes immediately
               return ctx.match[1].toUpperCase();
             `,
-            enabled: true
+            enabled: true,
+            name: ""
           }
         ];
         plugin.compileRules();
@@ -624,7 +647,8 @@ describe('PasteTransform Advanced Features', () => {
             script: `
               throw new Error("Test error");
             `,
-            enabled: true
+            enabled: true,
+            name: ""
           }
         ];
         plugin.compileRules();
@@ -683,7 +707,8 @@ describe('PasteTransform Advanced Features', () => {
               await new Promise(resolve => setTimeout(resolve, 3500));
               return ctx.match[1].toUpperCase();
             `,
-            enabled: true
+            enabled: true,
+            name: ""
           }
         ];
         plugin.compileRules();
@@ -727,7 +752,8 @@ describe('PasteTransform Advanced Features', () => {
           type: 'script',
           replacer: '',
           script: 'throw new Error("Script failed");',
-          enabled: true
+          enabled: true,
+          name: ""
         }
       ];
       plugin.compileRules();
@@ -758,14 +784,16 @@ describe('PasteTransform Advanced Features', () => {
           type: 'replace',
           replacer: 'replacement',
           script: '',
-          enabled: true
+          enabled: true,
+          name: ""
         },
         {
           pattern: 'valid',
           type: 'replace',
           replacer: 'VALID',
           script: '',
-          enabled: true
+          enabled: true,
+          name: ""
         }
       ];
       

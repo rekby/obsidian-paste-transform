@@ -52,7 +52,8 @@ describe('PasteTransform Backward Compatibility', () => {
       type: 'replace',
       replacer: 'SYNC:$1',
       script: '',
-      enabled: true
+      enabled: true,
+      name: ''
     });
     
     // Check second rule
@@ -61,7 +62,8 @@ describe('PasteTransform Backward Compatibility', () => {
       type: 'replace',
       replacer: 'ERROR:$1',
       script: '',
-      enabled: true
+      enabled: true,
+      name: ''
     });
   });
 
@@ -125,7 +127,8 @@ describe('PasteTransform Backward Compatibility', () => {
           type: 'script',
           replacer: '',
           script: 'return "TRANSFORMED:" + ctx.foundText;',
-          enabled: true
+          enabled: true,
+          name: ''
         }
       ],
       settingsFormatVersion: 2,
@@ -155,7 +158,8 @@ describe('PasteTransform Backward Compatibility', () => {
           type: 'script',
           replacer: '',
           script: 'return "TRANSFORMED:" + ctx.foundText;',
-          enabled: true
+          enabled: true,
+          name: ''
         }
       ],
       settingsFormatVersion: 2,
