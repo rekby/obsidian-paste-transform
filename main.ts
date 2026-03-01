@@ -1,4 +1,4 @@
-import {App, Plugin, PluginSettingTab, Setting, TextAreaComponent, DropdownComponent, ButtonComponent, TextComponent, Notice} from 'obsidian';
+import {App, Plugin, PluginSettingTab, Setting, TextAreaComponent, DropdownComponent, ButtonComponent, TextComponent, Notice, setIcon} from 'obsidian';
 
 // Script execution timeout in milliseconds
 const SCRIPT_TIMEOUT_MS = 3000;
@@ -453,6 +453,7 @@ export default class PasteTransform extends Plugin {
 
 class PasteTransformSettingsTab extends PluginSettingTab {
 	plugin: PasteTransform;
+	draggedIndex: number | null = null;
 
 	constructor(app: App, plugin: PasteTransform) {
 		super(app, plugin);
@@ -626,12 +627,17 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 		
 		const renderRule = (rule: Rule, index: number) => {
 			const ruleContainer = rulesContainer.createDiv({cls: 'rule-container'});
+			ruleContainer.draggable = true;
 			
 			// Check if this is a script rule and security warning is not accepted
 			const isScriptRuleLocked = rule.type === 'script' && !this.plugin.settings.scriptSecurityWarningAccepted;
 
 			// Header row with rule number, type toggle and delete button
 			const headerRow = ruleContainer.createDiv({cls: 'rule-header'});
+			
+			// Drag handle
+			const dragHandle = headerRow.createDiv({cls: 'drag-handle'});
+			setIcon(dragHandle, 'grip-vertical');
 			
 		// Rule number
 		const ruleNumber = index + 1;
@@ -774,6 +780,80 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 				scriptInput.setDisabled(true);
 			}
 		}
+			
+			// Drag and drop handlers
+			ruleContainer.addEventListener('dragstart', (e: DragEvent) => {
+				if (e.dataTransfer) {
+					this.draggedIndex = index;
+					e.dataTransfer.effectAllowed = 'move';
+					e.dataTransfer.setData('text/plain', index.toString());
+					ruleContainer.addClass('dragging');
+				}
+			});
+			
+			ruleContainer.addEventListener('dragover', (e: DragEvent) => {
+				e.preventDefault();
+				if (e.dataTransfer) {
+					e.dataTransfer.dropEffect = 'move';
+				}
+				
+				if (this.draggedIndex !== null && this.draggedIndex !== index) {
+					const rect = ruleContainer.getBoundingClientRect();
+					const midpoint = rect.top + rect.height / 2;
+					
+					ruleContainer.removeClass('drag-over-top');
+					ruleContainer.removeClass('drag-over-bottom');
+					
+					if (e.clientY < midpoint) {
+						ruleContainer.addClass('drag-over-top');
+					} else {
+						ruleContainer.addClass('drag-over-bottom');
+					}
+				}
+			});
+			
+			ruleContainer.addEventListener('dragleave', (e: DragEvent) => {
+				ruleContainer.removeClass('drag-over-top');
+				ruleContainer.removeClass('drag-over-bottom');
+			});
+			
+			ruleContainer.addEventListener('drop', async (e: DragEvent) => {
+				e.preventDefault();
+				ruleContainer.removeClass('drag-over-top');
+				ruleContainer.removeClass('drag-over-bottom');
+				
+				if (this.draggedIndex !== null && this.draggedIndex !== index) {
+					const rect = ruleContainer.getBoundingClientRect();
+					const midpoint = rect.top + rect.height / 2;
+					let targetIndex = index;
+					
+					if (e.clientY >= midpoint) {
+						targetIndex = index + 1;
+					}
+					
+					const rules = this.plugin.settings.rules;
+					const [draggedRule] = rules.splice(this.draggedIndex, 1);
+					
+					if (this.draggedIndex < targetIndex) {
+						targetIndex--;
+					}
+					
+					rules.splice(targetIndex, 0, draggedRule);
+					
+					await this.plugin.saveSettings();
+					this.plugin.compileRules();
+					this.display();
+				}
+			});
+			
+			ruleContainer.addEventListener('dragend', () => {
+				ruleContainer.removeClass('dragging');
+				document.querySelectorAll('.rule-container').forEach(el => {
+					el.removeClass('drag-over-top');
+					el.removeClass('drag-over-bottom');
+				});
+				this.draggedIndex = null;
+			});
 		};
 		
 		// Render all rules
