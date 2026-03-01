@@ -16,6 +16,15 @@ and paste them to a page.
 # Settings
 ![settings-page.png](attachements%2Fsettings-page.png)
 
+## Paste transform enabled
+
+You can globally enable/disable automatic paste transformation with the `Paste Transform Enabled` toggle in plugin settings.
+
+The plugin also provides 3 commands for Command Palette/hotkeys:
+- `Paste Transform: Enable paste transform`
+- `Paste Transform: Disable paste transform`
+- `Paste Transform: Toggle paste transform`
+
 ## Transform rules
 Each rule contains of regex to match and replacer. 
 Replacer can be either regex replacer or a script.
@@ -24,7 +33,24 @@ Use regex replacer for simple tasks.
 You can read more about regexp at [javascript documentation](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions).
 You can read more about replacement string at [javascript documentation](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace#specifying_a_string_as_the_replacement).
 
-The plugin contains some default rules for GitHub and Wikipedia as example. 
+The plugin contains some default rules for GitHub and Wikipedia as example.
+
+Rules are applied sequentially: the output of one rule is passed as input to the next.
+
+### Replacer (with selection)
+
+Each regex rule has an optional second replacer field: "Replacer (with selection)". When this field is non-empty and the editor has text selected at the time of paste, this replacer is used instead of the regular one. If the field is empty, the regular replacer is always used regardless of selection.
+
+This makes it easy to handle two common cases with one rule -- for example, auto-generate a link title from the URL when nothing is selected, but use the selected text as the link title when something is selected:
+
+- **Replacer**: `[🐈‍⬛ $1]($&)` -- used when nothing is selected
+- **Replacer (with selection)**: `[$SEL]($&)` -- used when text is selected
+
+### `$SEL` placeholder
+
+In both replacer fields, you can use the `$SEL` placeholder. It will be replaced with the text currently selected in the editor at the time of paste. If nothing is selected, it is replaced with an empty string.
+
+Example: with the replacer `[$SEL]($&)`, pasting a URL while having "My Link" selected produces `[My Link](https://example.com)`.
 
 ### JavaScript execution rules
 You can also create rules that execute JavaScript code. To do this, select "Script Replacer" from the dropdown menu when creating a new rule.
@@ -32,7 +58,10 @@ You can also create rules that execute JavaScript code. To do this, select "Scri
 The JavaScript code will receive a `ctx` object with the following properties:
 - `ctx.foundText` - the matched substring (convenient for simple cases)
 - `ctx.match` - the full match object with capture groups (result of `string.match(regexp)`)
+- `ctx.selectedText` - the text currently selected in the editor (empty string if nothing is selected)
 - `ctx.debug` - boolean flag indicating if debug mode is enabled (useful for conditional logging)
+
+The full definition of the `ctx` object (class `ScriptContext`) is in [script-context.ts](script-context.ts).
 
 The code should return the replacement string.
 

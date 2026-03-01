@@ -1,9 +1,17 @@
 // Mock for the obsidian module
 module.exports = {
   Plugin: class Plugin {
+    constructor(app, manifest) {
+      this.app = app;
+      this.manifest = manifest;
+    }
     async loadData() {
       return {};
     }
+    async saveData() {}
+    addCommand() {}
+    addSettingTab() {}
+    registerEvent() {}
   },
   PluginSettingTab: class PluginSettingTab {},
   Setting: class Setting {},

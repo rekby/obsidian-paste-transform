@@ -1,4 +1,5 @@
 import {App, Plugin, PluginSettingTab, Setting, TextAreaComponent, DropdownComponent, ButtonComponent, TextComponent, Notice, setIcon} from 'obsidian';
+import {ScriptContext} from './script-context';
 
 // Script execution timeout in milliseconds
 const SCRIPT_TIMEOUT_MS = 3000;
@@ -7,6 +8,15 @@ const SCRIPT_TIMEOUT_MS = 3000;
 const NOTICE_DURATION_SHORT = 3000;
 const NOTICE_DURATION_NORMAL = 5000;
 const NOTICE_DURATION_LONG = 10000;
+
+function getDefaultRuleName(ruleNumber: number): string {
+	return `Rule #${ruleNumber}`;
+}
+
+function getRuleDisplayName(ruleName: string, ruleNumber: number): string {
+	const trimmedName = ruleName.trim();
+	return trimmedName || getDefaultRuleName(ruleNumber);
+}
 
 // Define the type of rule
 type RuleType = 'replace' | 'script';
@@ -18,6 +28,8 @@ interface Rule {
 	replacer: string; // Used when type is 'replace'
 	script: string;   // Used when type is 'script'
 	enabled: boolean; // Whether the rule is enabled
+	name: string;     // Optional name for the rule
+	replacerWithSelection?: string; // Replacer used when there is selected text; if empty, regular replacer is used
 }
 
 
@@ -27,6 +39,7 @@ interface PasteTransformSettingsV2 {
 	debugMode: boolean,
 	showRuleNotifications: boolean,
 	scriptSecurityWarningAccepted: boolean,
+	pasteTransformEnabled: boolean,
 }
 
 // Old settings format (version 1)
@@ -44,75 +57,75 @@ const DEFAULT_SETTINGS: PasteTransformSettingsV2 = {
 			type: 'replace',
 			replacer: "[🐈‍⬛ $1]($&)",
 			script: "",
-			enabled: true
+			enabled: true,
+			name: "",
+			replacerWithSelection: "[🐈‍⬛ $SEL]($&)"
 		},
 		{
 			pattern: "^https://\\w+.wikipedia.org/wiki/([^\\s]+)$",
 			type: 'replace',
 			replacer: "[📖 $1]($&)",
 			script: "",
-			enabled: true
+			enabled: true,
+			name: "",
+			replacerWithSelection: "[📖 $SEL]($&)"
 		},
 		{
 			pattern: "^https://github.com/([^/]+)/([^/]+)/issues/(\\d+)$",
 			type: 'script',
 			replacer: "",
 			script: "" +
+				"// ctx fields: https://github.com/rekby/obsidian-paste-transform/blob/master/script-context.ts\n" +
 				"const url=`https://api.github.com/repos/${ctx.match[1]}/${ctx.match[2]}/issues/${ctx.match[3]}`\n" +
 				"const response = await fetch(url);\n" +
 				"const data = await response.json();\n" +
 				"const title = data.title;\n" +
 				"return `[${ctx.match[2]}#${ctx.match[3]}: ${title}](${ctx.foundText})`;",
-			enabled: false
+			enabled: false,
+			name: "",
+			replacerWithSelection: ""
 		},
 		{
 			pattern: "^https://github.com/([^/]+)/([^/]+)/pull/(\\d+)$",
 			type: 'script',
 			replacer: "",
 			script: "" +
+				"// ctx fields: https://github.com/rekby/obsidian-paste-transform/blob/master/script-context.ts\n" +
 				"const url=`https://api.github.com/repos/${ctx.match[1]}/${ctx.match[2]}/pulls/${ctx.match[3]}`\n" +
 				"const response = await fetch(url);\n" +
 				"const data = await response.json();\n" +
 				"const title = data.title;\n" +
 				"return `[${ctx.match[2]}#${ctx.match[3]}: ${title}](${ctx.foundText})`;",
-			enabled: false
+			enabled: false,
+			name: "",
+			replacerWithSelection: ""
 		}
 	],
 	settingsFormatVersion: 2,
 	debugMode: false,
 	showRuleNotifications: true,
 	scriptSecurityWarningAccepted: false,
-}
-
-class ScriptContext {
-	match: RegExpMatchArray;  // Full match object with groups
-	debug: boolean;  // Debug mode flag for user scripts
-	
-	constructor(match: RegExpMatchArray, debug: boolean) {
-		this.match = match;
-		this.debug = debug;
-	}
-	
-	// Getter for convenient access to the matched substring
-	get foundText(): string {
-		return this.match[0];
-	}
+	pasteTransformEnabled: true,
 }
 
 class ReplaceRule {
 	pattern: RegExp;
 	replacer: string;
 	script: string | null;
+	replacerWithSelection: string | null;
 	ruleNumber: number;
+	displayName: string;
 
-	constructor(pattern: string, replacer: string, script: string | null = null, ruleNumber: number) {
+	constructor(pattern: string, replacer: string, script: string | null, ruleNumber: number, displayName: string, replacerWithSelection: string = '') {
 		this.pattern = new RegExp(pattern, 'g'); // Add 'g' flag for global matching
 		this.replacer = replacer;
 		this.script = script;
+		this.replacerWithSelection = replacerWithSelection || null;
 		this.ruleNumber = ruleNumber;
+		this.displayName = displayName;
 	}
 
-	async executeScript(match: RegExpMatchArray, debugMode: boolean, app: App, ruleNumber: number): Promise<string> {
+	async executeScript(match: RegExpMatchArray, debugMode: boolean, app: App, ruleNumber: number, selectedText: string = ''): Promise<string> {
 		if (this.script) {
 			let timeoutId: NodeJS.Timeout | null = null;
 			try {
@@ -120,16 +133,16 @@ class ReplaceRule {
 				// Create an async function with context parameter
 				const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
 				const fn = new AsyncFunction('ctx', this.script);
-				const context = new ScriptContext(match, debugMode);
+				const context = new ScriptContext(match, debugMode, selectedText);
 				
-				// Create a timeout that shows notification after configured timeout
-				let timeoutShown = false;
-				timeoutId = setTimeout(() => {
-					if (!timeoutShown) {
-						timeoutShown = true;
-						new Notice(`Rule #${ruleNumber} is taking longer than expected`, NOTICE_DURATION_NORMAL);
-					}
-				}, SCRIPT_TIMEOUT_MS);
+			// Create a timeout that shows notification after configured timeout
+			let timeoutShown = false;
+			timeoutId = setTimeout(() => {
+				if (!timeoutShown) {
+					timeoutShown = true;
+					new Notice(`${this.displayName} is taking longer than expected`, NOTICE_DURATION_NORMAL);
+				}
+			}, SCRIPT_TIMEOUT_MS);
 				
 				// Execute the script
 				const scriptPromise = fn(context);
@@ -151,20 +164,20 @@ class ReplaceRule {
 					console.log(`Result: '${result}'`);
 				}
 				return result;
-			} catch (error) {
-			// Clear the timeout since script completed (with error)
-			if (timeoutId !== null) {
-				clearTimeout(timeoutId);
-				timeoutId = null;
-			}
-			
-			console.error(`Error executing script for rule #${ruleNumber}:`, error);
-			// Show error notification in Obsidian
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			new Notice(`Rule #${ruleNumber} script execution error: ${errorMessage}`, NOTICE_DURATION_NORMAL);
-			// Return the original match if there's an error
-			return match[0];
-			}
+		} catch (error) {
+		// Clear the timeout since script completed (with error)
+		if (timeoutId !== null) {
+			clearTimeout(timeoutId);
+			timeoutId = null;
+		}
+		
+		console.error(`Error executing script for ${this.displayName}:`, error);
+		// Show error notification in Obsidian
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		new Notice(`${this.displayName} script execution error: ${errorMessage}`, NOTICE_DURATION_NORMAL);
+		// Return the original match if there's an error
+		return match[0];
+		}
 		}
 		// If no script, use the default replacer
 		const result = match[0].replace(this.pattern, this.replacer);
@@ -176,7 +189,7 @@ class ReplaceRule {
 	}
 
 	// Process all matches in the source text with a script
-	async executeScriptForAllMatches(source: string, debugMode: boolean, app: App, ruleNumber: number): Promise<string> {
+	async executeScriptForAllMatches(source: string, debugMode: boolean, app: App, ruleNumber: number, selectedText: string = ''): Promise<string> {
 		if (!this.script) {
 			return source;
 		}
@@ -196,7 +209,7 @@ class ReplaceRule {
 			const matchEnd = matchStart + match[0].length;
 			
 			// Execute script for this match
-			const replacement = await this.executeScript(match, debugMode, app, ruleNumber);
+			const replacement = await this.executeScript(match, debugMode, app, ruleNumber, selectedText);
 			
 			// Replace this match in the result
 			result = result.substring(0, matchStart) + replacement + result.substring(matchEnd);
@@ -216,6 +229,30 @@ export default class PasteTransform extends Plugin {
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new PasteTransformSettingsTab(this.app, this));
 
+		this.addCommand({
+			id: 'enable-paste-transform',
+			name: 'Enable paste transform',
+			callback: async () => {
+				await this.setPasteTransformEnabled(true, true);
+			}
+		});
+
+		this.addCommand({
+			id: 'disable-paste-transform',
+			name: 'Disable paste transform',
+			callback: async () => {
+				await this.setPasteTransformEnabled(false, true);
+			}
+		});
+
+		this.addCommand({
+			id: 'toggle-paste-transform',
+			name: 'Toggle paste transform',
+			callback: async () => {
+				await this.togglePasteTransformEnabled(true);
+			}
+		});
+
 		this.registerEvent(this.app.workspace.on("editor-paste", event => this.onPaste(event)));
 	}
 
@@ -223,6 +260,13 @@ export default class PasteTransform extends Plugin {
 		if(event.defaultPrevented){
 			if (this.settings.debugMode) {
 				console.log("It doesn't try to apply rules because event prevented already.");
+			}
+			return;
+		}
+
+		if (!this.settings.pasteTransformEnabled) {
+			if (this.settings.debugMode) {
+				console.log("Paste transform is disabled. Skipping rule application.");
 			}
 			return;
 		}
@@ -239,8 +283,13 @@ export default class PasteTransform extends Plugin {
 			return;
 		}
 
+		const selectedText = this.app.workspace.activeEditor?.editor?.getSelection() || '';
+
 		if (this.settings.debugMode) {
 			console.log(`Original text: '${plainText}'`);
+			if (selectedText) {
+				console.log(`Selected text: '${selectedText}'`);
+			}
 		}
 
 		// Check if any rule matches (synchronously) before async operations
@@ -259,7 +308,7 @@ export default class PasteTransform extends Plugin {
 		}
 
 		// Apply all rules sequentially
-		const {changed, result} = await this.applyRules(plainText);
+		const {changed, result} = await this.applyRules(plainText, selectedText);
 		
 		// If we prevented default paste, we must insert text (either transformed or original)
 		if (preventedDefault) {
@@ -297,15 +346,16 @@ export default class PasteTransform extends Plugin {
 		const newRules: Rule[] = [];
 		const minIndex = Math.min(oldSettings.patterns.length, oldSettings.replacers.length);
 		
-		for (let i = 0; i < minIndex; i++) {
-			newRules.push({
-				pattern: oldSettings.patterns[i],
-				type: 'replace',
-				replacer: oldSettings.replacers[i],
-				script: '',
-				enabled: true
-			});
-		}
+	for (let i = 0; i < minIndex; i++) {
+		newRules.push({
+			pattern: oldSettings.patterns[i],
+			type: 'replace',
+			replacer: oldSettings.replacers[i],
+			script: '',
+			enabled: true,
+			name: ''
+		});
+	}
 			
 			// Create new settings object with converted data
 			this.settings = {
@@ -313,19 +363,32 @@ export default class PasteTransform extends Plugin {
 				settingsFormatVersion: 2, // Update to new format version
 				debugMode: oldSettings.debugMode || false,
 				showRuleNotifications: true,
-				scriptSecurityWarningAccepted: false
+				scriptSecurityWarningAccepted: false,
+				pasteTransformEnabled: true,
 			};
 		} else {
 			// Use default settings merged with loaded data (new format)
 			this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
 			
-			// Ensure scriptSecurityWarningAccepted is set (for backward compatibility with v2 without this field)
-			if (this.settings.scriptSecurityWarningAccepted === undefined) {
-				this.settings.scriptSecurityWarningAccepted = false;
-			}
+		// Ensure scriptSecurityWarningAccepted is set (for backward compatibility with v2 without this field)
+		if (this.settings.scriptSecurityWarningAccepted === undefined) {
+			this.settings.scriptSecurityWarningAccepted = false;
 		}
-		
-		// Auto-disable script security flag if there are no enabled script rules
+
+		// Ensure pasteTransformEnabled is set (for backward compatibility with older settings)
+		if (this.settings.pasteTransformEnabled === undefined) {
+			this.settings.pasteTransformEnabled = true;
+		}
+	}
+	
+	// Normalize rules: ensure name field exists (for backward compatibility)
+	this.settings.rules.forEach(rule => {
+		if (rule.name === undefined) {
+			rule.name = '';
+		}
+	});
+	
+	// Auto-disable script security flag if there are no enabled script rules
 		const hasEnabledScriptRules = this.settings.rules.some(rule => 
 			rule.type === 'script' && rule.enabled
 		);
@@ -342,6 +405,7 @@ export default class PasteTransform extends Plugin {
 		for (let i = 0; i < this.settings.rules.length; i++) {
 			const rule = this.settings.rules[i];
 			const ruleNumber = i + 1; // Rule numbers start from 1 for users (based on position in settings)
+			const displayName = getRuleDisplayName(rule.name, ruleNumber);
 			
 			if (rule.enabled) {
 				// Skip script rules if security warning not accepted
@@ -350,13 +414,13 @@ export default class PasteTransform extends Plugin {
 				}
 				try {
 					this.rules.push(
-						new ReplaceRule(rule.pattern, rule.replacer, rule.type === 'script' ? rule.script : null, ruleNumber)
+						new ReplaceRule(rule.pattern, rule.replacer, rule.type === 'script' ? rule.script : null, ruleNumber, displayName, rule.replacerWithSelection || '')
 					)
 				} catch (error) {
 					// Handle invalid regex patterns
-					console.error(`Error compiling rule #${ruleNumber}:`, error);
+					console.error(`Error compiling ${displayName}:`, error);
 					const errorMessage = error instanceof Error ? error.message : String(error);
-					new Notice(`Rule #${ruleNumber} has invalid pattern: ${errorMessage}`, NOTICE_DURATION_NORMAL);
+					new Notice(`${displayName} has invalid pattern: ${errorMessage}`, NOTICE_DURATION_NORMAL);
 					// Skip this rule and continue with others
 				}
 			}
@@ -367,8 +431,29 @@ export default class PasteTransform extends Plugin {
 		await this.saveData(this.settings);
 	}
 
+	public async setPasteTransformEnabled(enabled: boolean, showNotice: boolean = false): Promise<boolean> {
+		if (this.settings.pasteTransformEnabled === enabled) {
+			if (showNotice) {
+				new Notice(`Paste transform is already ${enabled ? 'enabled' : 'disabled'}`, NOTICE_DURATION_SHORT);
+			}
+			return false;
+		}
+
+		this.settings.pasteTransformEnabled = enabled;
+		await this.saveSettings();
+
+		if (showNotice) {
+			new Notice(`Paste transform ${enabled ? 'enabled' : 'disabled'}`, NOTICE_DURATION_SHORT);
+		}
+		return true;
+	}
+
+	public async togglePasteTransformEnabled(showNotice: boolean = false): Promise<boolean> {
+		return await this.setPasteTransformEnabled(!this.settings.pasteTransformEnabled, showNotice);
+	}
+
 	// Execute a specific rule on all matches in the source
-	private async executeRule(rule: ReplaceRule, source: string, ruleNumber: number): Promise<string> {
+	private async executeRule(rule: ReplaceRule, source: string, ruleNumber: number, selectedText: string = ''): Promise<string> {
 		// Reset the regex lastIndex to ensure we start from the beginning
 		rule.pattern.lastIndex = 0;
 		
@@ -380,74 +465,75 @@ export default class PasteTransform extends Plugin {
 			return source;
 		}
 
-		if (this.settings.debugMode) {
-			console.log(`Rule #${ruleNumber} triggered`);
-		}
-
-		if (rule.script) {
-			// This should never happen (script rules are filtered in compileRules), but check just in case
-			if (!this.settings.scriptSecurityWarningAccepted) {
-				console.error('BUG: Script rule executed without security acceptance. Please report this to the plugin developers.');
-				new Notice('⚠️ Security error detected. Script execution blocked. Please report this bug to the plugin developers.', NOTICE_DURATION_LONG);
-				return source; // Return unchanged
-			}
-			// If a script is defined, execute it for all matches
-			return await rule.executeScriptForAllMatches(source, this.settings.debugMode, this.app, ruleNumber);
-		} else {
-			// Otherwise, use the default replacer for all matches
-			const result = source.replace(rule.pattern, rule.replacer);
-			if (this.settings.debugMode) {
-				console.log(`Rule #${ruleNumber} - Matched regex: ${rule.pattern}`);
-				console.log(`Rule #${ruleNumber} - Result: '${result}'`);
-			}
-			return result;
-		}
+	if (this.settings.debugMode) {
+		console.log(`${rule.displayName} triggered`);
 	}
 
-	public async applyRules(source: string | null | undefined) : Promise<{changed: boolean, result: string}> {
+	if (rule.script) {
+		// This should never happen (script rules are filtered in compileRules), but check just in case
+		if (!this.settings.scriptSecurityWarningAccepted) {
+			console.error('BUG: Script rule executed without security acceptance. Please report this to the plugin developers.');
+			new Notice('⚠️ Security error detected. Script execution blocked. Please report this bug to the plugin developers.', NOTICE_DURATION_LONG);
+			return source; // Return unchanged
+		}
+		// If a script is defined, execute it for all matches
+		return await rule.executeScriptForAllMatches(source, this.settings.debugMode, this.app, ruleNumber, selectedText);
+	} else {
+		// Use replacerWithSelection when there is selected text and it is configured, otherwise use regular replacer
+		const activeReplacer = (selectedText && rule.replacerWithSelection) ? rule.replacerWithSelection : rule.replacer;
+		const result = source.replace(rule.pattern, activeReplacer).split('$SEL').join(selectedText);
+		if (this.settings.debugMode) {
+			console.log(`${rule.displayName} - Matched regex: ${rule.pattern}`);
+			console.log(`${rule.displayName} - Result: '${result}'`);
+		}
+		return result;
+	}
+	}
+
+	public async applyRules(source: string | null | undefined, selectedText: string = '') : Promise<{changed: boolean, result: string}> {
 		if (source === undefined || source === null){
 			return {changed: false, result: ""};
 		}
 
-		let result = source;
-		let changed = false;
-		const triggeredRuleNumbers: number[] = [];
+	let result = source;
+	let changed = false;
+	const triggeredRuleNames: string[] = [];
 
-		// Apply all rules sequentially
-		for (const rule of this.rules) {
-			try {
-				const beforeRule = result;
-				result = await this.executeRule(rule, result, rule.ruleNumber);
-				
-				// Check if this rule changed the text
-				if (result !== beforeRule) {
-					changed = true;
-					triggeredRuleNumbers.push(rule.ruleNumber);
-				}
-			} catch (error) {
-				// Show error notification in Obsidian
-				console.error(`Error applying rule #${rule.ruleNumber}:`, error);
-				const errorMessage = error instanceof Error ? error.message : String(error);
-				new Notice(`Rule #${rule.ruleNumber} execution error: ${errorMessage}`, NOTICE_DURATION_NORMAL);
-				// Continue with the next rule, keeping the text unchanged
+	// Apply all rules sequentially
+	for (const rule of this.rules) {
+		try {
+			const beforeRule = result;
+			result = await this.executeRule(rule, result, rule.ruleNumber, selectedText);
+			
+			// Check if this rule changed the text
+			if (result !== beforeRule) {
+				changed = true;
+				triggeredRuleNames.push(rule.displayName);
 			}
+		} catch (error) {
+			// Show error notification in Obsidian
+			console.error(`Error applying ${rule.displayName}:`, error);
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			new Notice(`${rule.displayName} execution error: ${errorMessage}`, NOTICE_DURATION_NORMAL);
+			// Continue with the next rule, keeping the text unchanged
 		}
-
-	// Show notification with all triggered rules if enabled
-	if (changed && this.settings.showRuleNotifications && triggeredRuleNumbers.length > 0) {
-		const rulesList = triggeredRuleNumbers.join(', ');
-		const message = triggeredRuleNumbers.length === 1 
-			? `Rule #${rulesList} triggered`
-			: `Rules #${rulesList} triggered`;
-		new Notice(message, NOTICE_DURATION_SHORT);
 	}
 
-		// Log all triggered rules
-		if (this.settings.debugMode && triggeredRuleNumbers.length > 0) {
-			console.log(`Triggered rules: #${triggeredRuleNumbers.join(', #')}`);
-		}
+// Show notification with all triggered rules if enabled
+if (changed && this.settings.showRuleNotifications && triggeredRuleNames.length > 0) {
+	const rulesList = triggeredRuleNames.join(', ');
+	const message = triggeredRuleNames.length === 1 
+		? `${rulesList} triggered`
+		: `${rulesList} triggered`;
+	new Notice(message, NOTICE_DURATION_SHORT);
+}
 
-		return {changed, result};
+	// Log all triggered rules
+	if (this.settings.debugMode && triggeredRuleNames.length > 0) {
+		console.log(`Triggered rules: ${triggeredRuleNames.join(', ')}`);
+	}
+
+	return {changed, result};
 	}
 }
 
@@ -493,11 +579,24 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 		const {containerEl} = this;
 		containerEl.empty();
 
+		this.renderPasteTransformToggle(containerEl);
 		this.renderSecurityToggle(containerEl);
 		this.renderDebugToggle(containerEl);
 		this.renderNotificationsToggle(containerEl);
 		this.renderTestSection(containerEl);
 		this.renderRulesSection(containerEl);
+	}
+
+	private renderPasteTransformToggle(containerEl: HTMLElement): void {
+		new Setting(containerEl)
+			.setName("Paste Transform Enabled")
+			.setDesc("Enable or disable automatic paste transformation by rules.")
+			.addToggle(toggle => {
+				toggle.setValue(this.plugin.settings.pasteTransformEnabled);
+				toggle.onChange(async (value) => {
+					await this.plugin.setPasteTransformEnabled(value);
+				});
+			});
 	}
 
 	private renderSecurityToggle(containerEl: HTMLElement): void {
@@ -583,11 +682,12 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 		
 		// Try rules section
 		let trySource: TextAreaComponent | null = null;
+		let trySelectedText: TextAreaComponent | null = null;
 		let tryDest: TextAreaComponent | null = null;
 		
 		const handleChanges = async () => {
 			try {
-				const {result} = await this.plugin.applyRules(trySource?.getValue() || "");
+				const {result} = await this.plugin.applyRules(trySource?.getValue() || "", trySelectedText?.getValue() || "");
 				tryDest?.setValue(result);
 			} catch (e) {
 				tryDest?.setValue("ERROR:\n" + e);
@@ -606,6 +706,19 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 				});
 			});
 		sourceSetting.settingEl.classList.add('test-rules-setting');
+
+		const selectedTextSetting = new Setting(testContainer)
+			.setName("Test Selected Text")
+			.setDesc("Simulate selected text in the editor (used by 'Replacer with selection' and $SEL placeholder)")
+			.addTextArea(ta => {
+				trySelectedText = ta;
+				ta.setPlaceholder("Enter simulated selected text");
+				ta.inputEl.classList.add('test-textarea');
+				ta.onChange(async () => {
+					await handleChanges();
+				});
+			});
+		selectedTextSetting.settingEl.classList.add('test-rules-setting');
 			
 		const resultSetting = new Setting(testContainer)
 			.setName("Test Result")
@@ -627,7 +740,7 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 		
 		const renderRule = (rule: Rule, index: number) => {
 			const ruleContainer = rulesContainer.createDiv({cls: 'rule-container'});
-			ruleContainer.draggable = true;
+			ruleContainer.draggable = false;
 			
 			// Check if this is a script rule and security warning is not accepted
 			const isScriptRuleLocked = rule.type === 'script' && !this.plugin.settings.scriptSecurityWarningAccepted;
@@ -638,10 +751,24 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 			// Drag handle
 			const dragHandle = headerRow.createDiv({cls: 'drag-handle'});
 			setIcon(dragHandle, 'grip-vertical');
+			dragHandle.addEventListener('mousedown', () => {
+				ruleContainer.draggable = true;
+			});
+			dragHandle.addEventListener('mouseup', () => {
+				ruleContainer.draggable = false;
+			});
 			
-		// Rule number
+		// Rule number / name input
 		const ruleNumber = index + 1;
-		const ruleNumberEl = headerRow.createEl('span', {text: `Rule #${ruleNumber}`, cls: 'rule-number'});
+		const nameInputContainer = headerRow.createDiv({cls: 'rule-name-container'});
+		const nameInput = new TextComponent(nameInputContainer);
+		nameInput.setPlaceholder(getDefaultRuleName(ruleNumber));
+		nameInput.setValue(rule.name);
+		nameInput.onChange(async (value) => {
+			this.plugin.settings.rules[index].name = value;
+			await this.plugin.saveSettings();
+			this.plugin.compileRules();
+		});
 			
 			// Type toggle
 			const typeDropdownContainer = headerRow.createDiv({cls: 'type-dropdown-container'});
@@ -677,8 +804,9 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 		deleteButton.setIcon('trash');
 		deleteButton.setTooltip('Delete rule');
 		deleteButton.onClick(async () => {
+			const ruleLabel = getRuleDisplayName(rule.name, ruleNumber);
 			const confirmed = confirm(
-				`Удалить правило #${ruleNumber}?\n\n` +
+				`Delete rule ${ruleLabel}?\n\n` +
 				`Regex: ${rule.pattern}`
 			);
 			if (confirmed) {
@@ -756,6 +884,19 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 			replacerInput.inputEl.classList.add('text-input-full');
 			replacerInput.onChange(async (value) => {
 				this.plugin.settings.rules[index].replacer = value;
+				await this.plugin.saveSettings();
+				this.plugin.compileRules();
+			});
+
+			// Replacer with selection input (shown only for replace rules)
+			const replacerWithSelectionContainer = ruleContainer.createDiv({cls: 'replacer-container'});
+			replacerWithSelectionContainer.createEl('label', {text: 'Replacer (with selection)'});
+			const replacerWithSelectionInput = new TextComponent(replacerWithSelectionContainer);
+			replacerWithSelectionInput.setValue(rule.replacerWithSelection || '');
+			replacerWithSelectionInput.setPlaceholder("Replacer to use when text is selected (optional)");
+			replacerWithSelectionInput.inputEl.classList.add('text-input-full');
+			replacerWithSelectionInput.onChange(async (value) => {
+				this.plugin.settings.rules[index].replacerWithSelection = value;
 				await this.plugin.saveSettings();
 				this.plugin.compileRules();
 			});
@@ -853,6 +994,7 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 					el.removeClass('drag-over-bottom');
 				});
 				this.draggedIndex = null;
+				ruleContainer.draggable = false;
 			});
 		};
 		
@@ -872,7 +1014,9 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 				type: 'replace',
 				replacer: "",
 				script: "",
-				enabled: true
+				enabled: true,
+				name: "",
+				replacerWithSelection: ""
 			});
 			await this.plugin.saveSettings();
 			this.plugin.compileRules();
