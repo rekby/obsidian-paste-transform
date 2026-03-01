@@ -15,4 +15,10 @@ module.exports = {
       this.duration = duration;
     }
   },
+  setIcon: (element, iconId) => {
+    // Mock implementation - just sets a data attribute for testing
+    if (element && iconId) {
+      element.setAttribute('data-icon', iconId);
+    }
+  },
 };

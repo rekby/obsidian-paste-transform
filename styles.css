@@ -96,3 +96,34 @@
 .paste-code-transform .setting-no-border {
 	border-top: none;
 }
+
+.paste-code-transform .drag-handle {
+	cursor: grab;
+	opacity: 0.5;
+	flex-shrink: 0;
+	padding: 0 8px;
+	display: flex;
+	align-items: center;
+	transition: opacity 0.2s;
+}
+
+.paste-code-transform .drag-handle:hover {
+	opacity: 1;
+}
+
+.paste-code-transform .drag-handle:active {
+	cursor: grabbing;
+}
+
+.paste-code-transform .rule-container.dragging {
+	opacity: 0.4;
+	border: 1px dashed var(--background-modifier-border);
+}
+
+.paste-code-transform .rule-container.drag-over-top {
+	border-top: 2px solid var(--interactive-accent);
+}
+
+.paste-code-transform .rule-container.drag-over-bottom {
+	border-bottom: 2px solid var(--interactive-accent);
+}
