@@ -9,6 +9,15 @@ const NOTICE_DURATION_SHORT = 3000;
 const NOTICE_DURATION_NORMAL = 5000;
 const NOTICE_DURATION_LONG = 10000;
 
+function getDefaultRuleName(ruleNumber: number): string {
+	return `Rule #${ruleNumber}`;
+}
+
+function getRuleDisplayName(ruleName: string, ruleNumber: number): string {
+	const trimmedName = ruleName.trim();
+	return trimmedName || getDefaultRuleName(ruleNumber);
+}
+
 // Define the type of rule
 type RuleType = 'replace' | 'script';
 
@@ -396,7 +405,7 @@ export default class PasteTransform extends Plugin {
 		for (let i = 0; i < this.settings.rules.length; i++) {
 			const rule = this.settings.rules[i];
 			const ruleNumber = i + 1; // Rule numbers start from 1 for users (based on position in settings)
-			const displayName = rule.name || `Rule #${ruleNumber}`;
+			const displayName = getRuleDisplayName(rule.name, ruleNumber);
 			
 			if (rule.enabled) {
 				// Skip script rules if security warning not accepted
@@ -753,7 +762,7 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 		const ruleNumber = index + 1;
 		const nameInputContainer = headerRow.createDiv({cls: 'rule-name-container'});
 		const nameInput = new TextComponent(nameInputContainer);
-		nameInput.setPlaceholder(`Rule #${ruleNumber}`);
+		nameInput.setPlaceholder(getDefaultRuleName(ruleNumber));
 		nameInput.setValue(rule.name);
 		nameInput.onChange(async (value) => {
 			this.plugin.settings.rules[index].name = value;
@@ -795,8 +804,9 @@ class PasteTransformSettingsTab extends PluginSettingTab {
 		deleteButton.setIcon('trash');
 		deleteButton.setTooltip('Delete rule');
 		deleteButton.onClick(async () => {
+			const ruleLabel = getRuleDisplayName(rule.name, ruleNumber);
 			const confirmed = confirm(
-				`Delete rule #${ruleNumber}?\n\n` +
+				`Delete rule ${ruleLabel}?\n\n` +
 				`Regex: ${rule.pattern}`
 			);
 			if (confirmed) {
