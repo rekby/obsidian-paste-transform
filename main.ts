@@ -275,7 +275,7 @@ export default class PasteTransform extends Plugin {
 		if (this.settings.debugMode) {
 			console.log("transform plugin, clipboard content types:", types);
 		}
-		if (types === undefined || types.length != 1 || types[0] != "text/plain"){
+		if (types === undefined || !types.includes("text/plain")){
 			return;
 		}
 		let plainText = event.clipboardData?.getData("text/plain");
