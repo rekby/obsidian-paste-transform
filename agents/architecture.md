@@ -24,6 +24,7 @@ jest.config.js              Jest config (ts-jest, node environment)
 __mocks__/obsidian.js        Mocks for Obsidian API (Plugin, Setting, Notice, etc.)
 __tests__/
   advanced.test.ts           Feature tests (regex, scripts, async, errors, timeouts, chaining)
+  paste-clipboard-types.test.ts   onPaste with different clipboard content types
   test-backward-compatibility.ts  Settings migration v1->v2, script security flag
 .github/workflows/
   test.yml                   CI: build + test on PR/push to main/master
