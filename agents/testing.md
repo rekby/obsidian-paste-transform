@@ -20,6 +20,7 @@ Both commands must pass before creating a PR. CI (`test.yml`) runs them automati
 | File | What it covers |
 |------|---------------|
 | `__tests__/advanced.test.ts` | Regex rules, script rules, async scripts, error handling, multiple matches, rule chaining, script timeout notifications, invalid regex patterns, error recovery |
+| `__tests__/paste-clipboard-types.test.ts` | `onPaste` with clipboard content type combinations produced by real applications (plain text only, plain text + html, vendor flavors, file copy) |
 | `__tests__/test-backward-compatibility.ts` | Settings migration from v1 to v2, script security flag behavior (block/allow execution) |
 
 ## Mocks

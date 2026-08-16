@@ -275,7 +275,30 @@ export default class PasteTransform extends Plugin {
 		if (this.settings.debugMode) {
 			console.log("transform plugin, clipboard content types:", types);
 		}
-		if (types === undefined || types.length != 1 || types[0] != "text/plain"){
+		if (types === undefined){
+			return;
+		}
+
+		// DataTransfer.types is an array in the spec, but some implementations
+		// expose a DOMStringList - Array.from gives uniform access.
+		const typeList = Array.from(types);
+
+		// Pasting a file (Finder, Explorer) is not our business, even if the
+		// clipboard also carries a text/plain with the file path or name.
+		if (typeList.includes("Files")){
+			if (this.settings.debugMode) {
+				console.log("transform plugin: skip paste with files in clipboard");
+			}
+			return;
+		}
+
+		// Obsidian itself, browsers and code editors put several flavors into
+		// the clipboard at once (text/plain plus text/html and vendor specific
+		// ones), so it isn't enough to have text/plain as the only type.
+		if (!typeList.includes("text/plain")){
+			if (this.settings.debugMode) {
+				console.log("transform plugin: skip paste without text/plain");
+			}
 			return;
 		}
 		let plainText = event.clipboardData?.getData("text/plain");
